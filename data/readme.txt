@@ -24,7 +24,7 @@ All data is from 1999 to 2019 (2019 is the latest year for which data was collec
 
 ##
 
-Data set names on eurostat (links are dynamic, so I cant link them):
+Data set names on eurostat
 
 Total population 																			: Population on 1 January by age groups and sex - cities and greater cities
 Proportion of foreign-born citizins (foreign-born/native-born) 	: Population by citizenship and country of birth - cities and greater cities
