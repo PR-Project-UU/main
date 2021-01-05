@@ -34,18 +34,12 @@ filtered_data = merged_data.rename(columns=renames).drop(columns=droppes)
 # The following allows to see all values of METROREG without doublets, that's how I retrieved the rows which we do not want
 #sorted(set(list(filtered_data.METROREG)))
 
-non_metro=['Non-metropolitan regions in Austria','Non-metropolitan regions in Belgium',
- 'Non-metropolitan regions in Bulgaria','Non-metropolitan regions in Croatia',
- 'Non-metropolitan regions in Czech Republic','Non-metropolitan regions in Denmark',
- 'Non-metropolitan regions in Estonia','Non-metropolitan regions in Finland',
- 'Non-metropolitan regions in Germany','Non-metropolitan regions in Greece',
- 'Non-metropolitan regions in Hungary','Non-metropolitan regions in Ireland',
- 'Non-metropolitan regions in Italy','Non-metropolitan regions in Latvia',
- 'Non-metropolitan regions in Lithuania','Non-metropolitan regions in Malta',
- 'Non-metropolitan regions in Netherlands','Non-metropolitan regions in North Macedonia',
- 'Non-metropolitan regions in Portugal','Non-metropolitan regions in Romania',
- 'Non-metropolitan regions in Serbia','Non-metropolitan regions in Slovakia',
- 'Non-metropolitan regions in Slovenia','Non-metropolitan regions in Spain',
+non_metro=['Non-metropolitan regions in Austria','Non-metropolitan regions in Belgium','Non-metropolitan regions in Bulgaria','Non-metropolitan regions in Croatia',
+ 'Non-metropolitan regions in Czech Republic','Non-metropolitan regions in Denmark','Non-metropolitan regions in Estonia','Non-metropolitan regions in Finland',
+ 'Non-metropolitan regions in Germany','Non-metropolitan regions in Greece','Non-metropolitan regions in Hungary','Non-metropolitan regions in Ireland',
+ 'Non-metropolitan regions in Italy','Non-metropolitan regions in Latvia','Non-metropolitan regions in Lithuania','Non-metropolitan regions in Malta',
+ 'Non-metropolitan regions in Netherlands','Non-metropolitan regions in North Macedonia','Non-metropolitan regions in Portugal','Non-metropolitan regions in Romania',
+ 'Non-metropolitan regions in Serbia','Non-metropolitan regions in Slovakia','Non-metropolitan regions in Slovenia','Non-metropolitan regions in Spain',
  'Non-metropolitan regions in Sweden','Non-metropolitan regions in United Kingdom']
 
 countries = ["West Midlands urban area","North Macedonia",
