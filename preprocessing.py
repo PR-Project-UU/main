@@ -34,32 +34,19 @@ filtered_data = merged_data.rename(columns=renames).drop(columns=droppes)
 # The following allows to see all values of METROREG without doublets, that's how I retrieved the rows which we do not want
 #sorted(set(list(filtered_data.METROREG)))
 
-non_metro=['Non-metropolitan regions in Austria',
- 'Non-metropolitan regions in Belgium',
- 'Non-metropolitan regions in Bulgaria',
- 'Non-metropolitan regions in Croatia',
- 'Non-metropolitan regions in Czech Republic',
- 'Non-metropolitan regions in Denmark',
- 'Non-metropolitan regions in Estonia',
- 'Non-metropolitan regions in Finland',
- 'Non-metropolitan regions in Germany',
- 'Non-metropolitan regions in Greece',
- 'Non-metropolitan regions in Hungary',
- 'Non-metropolitan regions in Ireland',
- 'Non-metropolitan regions in Italy',
- 'Non-metropolitan regions in Latvia',
- 'Non-metropolitan regions in Lithuania',
- 'Non-metropolitan regions in Malta',
- 'Non-metropolitan regions in Netherlands',
- 'Non-metropolitan regions in North Macedonia',
- 'Non-metropolitan regions in Portugal',
- 'Non-metropolitan regions in Romania',
- 'Non-metropolitan regions in Serbia',
- 'Non-metropolitan regions in Slovakia',
- 'Non-metropolitan regions in Slovenia',
- 'Non-metropolitan regions in Spain',
- 'Non-metropolitan regions in Sweden',
- 'Non-metropolitan regions in United Kingdom']
+non_metro=['Non-metropolitan regions in Austria','Non-metropolitan regions in Belgium',
+ 'Non-metropolitan regions in Bulgaria','Non-metropolitan regions in Croatia',
+ 'Non-metropolitan regions in Czech Republic','Non-metropolitan regions in Denmark',
+ 'Non-metropolitan regions in Estonia','Non-metropolitan regions in Finland',
+ 'Non-metropolitan regions in Germany','Non-metropolitan regions in Greece',
+ 'Non-metropolitan regions in Hungary','Non-metropolitan regions in Ireland',
+ 'Non-metropolitan regions in Italy','Non-metropolitan regions in Latvia',
+ 'Non-metropolitan regions in Lithuania','Non-metropolitan regions in Malta',
+ 'Non-metropolitan regions in Netherlands','Non-metropolitan regions in North Macedonia',
+ 'Non-metropolitan regions in Portugal','Non-metropolitan regions in Romania',
+ 'Non-metropolitan regions in Serbia','Non-metropolitan regions in Slovakia',
+ 'Non-metropolitan regions in Slovenia','Non-metropolitan regions in Spain',
+ 'Non-metropolitan regions in Sweden','Non-metropolitan regions in United Kingdom']
 
 countries = ["West Midlands urban area","North Macedonia",
 "Austria","Belgium","Bulgaria",
@@ -101,23 +88,32 @@ in our data set. From there, we need to figure out a way to access the satellite
 
 import geopy
 from geopy.geocoders import Nominatim
-#quick example, to be removed
-geolocator = Nominatim(user_agent="Master-Student") #I think we can put about anything in user agent it doesn't matter
-location = geolocator.geocode("Paris")
-print(location.latitude)
 
 #Creating a function to retrieve latitude & longitude from a string
 
 geolocator = Nominatim(user_agent="Master-Student")
 
 def get_coord(k):
-    assert type(k)==str
+    assert type(k) == str
     return (geolocator.geocode(k).latitude,geolocator.geocode(k).longitude) # returns a tuple in the form (latitude,longitude)
 
 #Next, we need to add an extra column in which we store the latitudes & longitudes of the corresponding rows
-filtered_data3["latitude&longitude"]=filtered_data3["METROREG"].apply(get_coord)
 
-"""This last part may ran into some trouble as some METROREG values 
-from the last obtained dataframe 
-are " Braunschweig-Salzgitter-Wolfsburg" ( can be checked with sorted(set(list(filtered_data3.METROREG)) ) 
-needs a little bit of work to get it right but should work"""
+longlat = [0 for i in range(filtered_data3.shape[0])] #list full of zeros, could improve the code w/numpy later
+
+#Adding the extra  empty column:
+filtered_data3['longlatitude']=longlat
+
+d={} #Creating a dictionnary with cities as keys and position as values
+for i in sorted(set(list(filtered_data3.METROREG))):
+    d[i]=get_coord(i)
+
+#Adding corresponding positions to cities
+#Problem : was only able to add the coordinates as strings and not tuples :(, this needs to be changed otherwise it's gonna slow computation speed
+for i in d.keys():
+    for idx, row in filtered_data3.iterrows():
+        if  filtered_data3.loc[idx,'METROREG'] == i:
+            print(d[i])
+            filtered_data3.loc[idx,'longlat'] = str(d[i])
+
+#print(filtered_data3) 
