@@ -107,7 +107,6 @@ for i in sorted(set(list(filtered_data3.METROREG))):
 for i in d.keys():
     for idx, row in filtered_data3.iterrows():
         if  filtered_data3.loc[idx,'METROREG'] == i:
-            print(d[i])
             filtered_data3.loc[idx,'longlat'] = str(d[i])
 
 #print(filtered_data3) 
