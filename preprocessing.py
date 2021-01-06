@@ -93,10 +93,10 @@ def get_coord(k):
 
 #Next, we need to add an extra column in which we store the latitudes & longitudes of the corresponding rows
 
-longlat = [0 for i in range(filtered_data3.shape[0])] #list full of zeros, could improve the code w/numpy later
+latlong = [0 for i in range(filtered_data3.shape[0])] #list full of zeros, could improve the code w/numpy later
 
 #Adding the extra  empty column:
-filtered_data3['longlatitude']=longlat
+filtered_data3['latlong']=latlong
 
 d={} #Creating a dictionnary with cities as keys and position as values
 for i in sorted(set(list(filtered_data3.METROREG))):
@@ -107,6 +107,13 @@ for i in sorted(set(list(filtered_data3.METROREG))):
 for i in d.keys():
     for idx, row in filtered_data3.iterrows():
         if  filtered_data3.loc[idx,'METROREG'] == i:
-            filtered_data3.loc[idx,'longlat'] = str(d[i])
+            filtered_data3.loc[idx,'latlong'] = str(d[i])
+#We need to delete the cities for which we do not have enough data for, here I set the the minimum number of instances to be at least 10 years of data per city
 
-#print(filtered_data3) 
+d2=dict(filtered_data3['METROREG'].value_counts()) #This dictionnary stores the number of times each city appears in the data
+
+
+for i in d2.keys(): #This for loop removes all rows for cities on which we do not have enough data
+    if d2[i]<10: #10 years at least
+        filtered_data3=filtered_data3[filtered_data3.METROREG!=i]
+#If everything worked correctly, you should be left with the filtered_data3 dataframe in the shape (633,6)
