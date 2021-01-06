@@ -42,13 +42,10 @@ non_metro=['Non-metropolitan regions in Austria','Non-metropolitan regions in Be
  'Non-metropolitan regions in Serbia','Non-metropolitan regions in Slovakia','Non-metropolitan regions in Slovenia','Non-metropolitan regions in Spain',
  'Non-metropolitan regions in Sweden','Non-metropolitan regions in United Kingdom']
 
-countries = ["West Midlands urban area","North Macedonia",
-"Austria","Belgium","Bulgaria",
-"Croatia","Cyprus","Czechia","Denmark",
-"Estonia","Finland","France","Germany","Germany (until 1990 former territory of the FRG)"
-,"Greece","Hungary","Ireland","Italy","Latvia","Lithuania","Luxembourg","Malta","Netherlands",
-"Poland","Portugal","Romania","Serbia","Slovakia","Slovenia","Spain","Sweden"]
-
+countries = countries = ['United Kingdom',"West Midlands urban area","North Macedonia","Austria","Belgium","Bulgaria","Croatia",
+                         "Cyprus","Czechia","Denmark","Estonia","Finland","France","Germany","Germany (until 1990 former territory of the FRG)","Greece",
+                         "Hungary","Ireland","Italy","Latvia","Lithuania","Luxembourg","Malta","Netherlands","Poland","Portugal","Romania","Serbia",
+                         "Slovakia","Slovenia","Spain","Sweden"]
 countries.extend(non_metro) #merges the two lists above
 
 #Removing countries and zones we do not want
@@ -65,6 +62,11 @@ filtered_data2.population = filtered_data2['population'].astype(int) #changing c
 filtered_data2.gdp = filtered_data2.gdp.str.replace(r':','0') #replacing missing values (noted ':') by 0
 filtered_data2.gdp = filtered_data2['gdp'].str.replace(r',', '') #removing commas 
 filtered_data2.gdp = filtered_data2['gdp'].astype(float) #changing column type
+
+#employed_persons column
+filtered_data2.employed_persons = filtered_data2.employed_persons.astype(str).str.replace(r':','0')
+filtered_data2.employed_persons = filtered_data2['employed_persons'].str.replace(r',', '')
+filtered_data2.employed_persons = filtered_data2['employed_persons'].astype(float)
 
 #OPTIMAL VALUES TO BE DETERMINED
 #As of now, we look at cities with minimum thresholds of population>500000 and GDP>40000, could be changed if we need more/less data
