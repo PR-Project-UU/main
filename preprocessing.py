@@ -42,7 +42,7 @@ non_metro=['Non-metropolitan regions in Austria','Non-metropolitan regions in Be
  'Non-metropolitan regions in Serbia','Non-metropolitan regions in Slovakia','Non-metropolitan regions in Slovenia','Non-metropolitan regions in Spain',
  'Non-metropolitan regions in Sweden','Non-metropolitan regions in United Kingdom']
 
-countries = countries = ['United Kingdom',"West Midlands urban area","North Macedonia","Austria","Belgium","Bulgaria","Croatia",
+countries = countries = ["United Kingdom","West Midlands urban area","North Macedonia","Austria","Belgium","Bulgaria","Croatia",
                          "Cyprus","Czechia","Denmark","Estonia","Finland","France","Germany","Germany (until 1990 former territory of the FRG)","Greece",
                          "Hungary","Ireland","Italy","Latvia","Lithuania","Luxembourg","Malta","Netherlands","Poland","Portugal","Romania","Serbia",
                          "Slovakia","Slovenia","Spain","Sweden"]
@@ -113,8 +113,9 @@ def get_coord(k):
 
 latlong = [0 for i in range(filtered_data3.shape[0])] #list full of zeros, could improve the code w/numpy later
 
-#Adding the extra  empty column:
-filtered_data3['latlong']=latlong
+#Adding the extra  empty columns:
+filtered_data3['latitude'] = latlong
+filtered_data3['longitude'] = latlong
 
 d={} #Creating a dictionnary with cities as keys and position as values
 for i in sorted(set(list(filtered_data3.METROREG))):
@@ -124,14 +125,15 @@ for i in sorted(set(list(filtered_data3.METROREG))):
 #Problem : was only able to add the coordinates as strings and not tuples :(, this needs to be changed otherwise it's gonna slow computation speed
 for i in d.keys():
     for idx, row in filtered_data3.iterrows():
-        if  filtered_data3.loc[idx,'METROREG'] == i:
-            filtered_data3.loc[idx,'latlong'] = str(d[i])
+        if  filtered_data3.loc[idx,'METROREG'] == i: #The following fixes the type problem previously encountered
+            filtered_data3.loc[idx,'latitude'] = list(d.values())[i][0] #accesses the latitude
+            filtered_data3.loc[idx,'longitude'] = list(d.values())[i][1] #accesses the longitude
+            
 #We need to delete the cities for which we do not have enough data for, here I set the the minimum number of instances to be at least 10 years of data per city
 
 d2=dict(filtered_data3['METROREG'].value_counts()) #This dictionnary stores the number of times each city appears in the data
 
-
 for i in d2.keys(): #This for loop removes all rows for cities on which we do not have enough data
     if d2[i]<10: #10 years at least
         filtered_data3=filtered_data3[filtered_data3.METROREG!=i]
-#If everything worked correctly, you should be left with the filtered_data3 dataframe in the shape (633,6)
+#yields filterred_data3 in the shape (614, 7)
