@@ -99,6 +99,7 @@ in our data set. From there, we need to figure out a way to access the satellite
 
 import geopy
 from geopy.geocoders import Nominatim
+from functools import partial
 
 #Creating a function to retrieve latitude & longitude from a string
 
