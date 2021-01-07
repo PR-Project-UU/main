@@ -29,7 +29,7 @@ droppes = ['UNIT_x', 'WSTATUS', 'NACE_R2', 'Flag and Footnotes_x',
 
 filtered_data = merged_data.rename(columns=renames).drop(columns=droppes)
 
-#print(filtered_data)
+# print(filtered_data)
 
 # The following allows to see all values of METROREG without doublets, that's how I retrieved the rows which we do not want
 #sorted(set(list(filtered_data.METROREG)))
@@ -78,6 +78,21 @@ filtered_data3 = filtered_data2[(filtered_data2['TIME']>=2000) & (filtered_data2
 To bridge the images and the socio economic data, we can use the geopy package to retrieve the latitude & longitude of the cities 
 in our data set. From there, we need to figure out a way to access the satellite images w/latitude & longitude
 """
+
+# # Directly covered from https://developers.google.com/earth-engine/guides/landsat
+# # Load a raw Landsat scene and display it.
+# raw = ee.Image('LANDSAT/LC08/C01/T1/LC08_044034_20140318');
+# Map.centerObject(raw, 10);
+# Map.addLayer(raw, {bands: ['B4', 'B3', 'B2'], min: 6000, max: 12000}, 'raw');
+
+# # Convert the raw data to radiance.
+# var radiance = ee.Algorithms.Landsat.calibratedRadiance(raw);
+# Map.addLayer(radiance, {bands: ['B4', 'B3', 'B2'], max: 90}, 'radiance');
+
+# # Convert the raw data to top-of-atmosphere reflectance.
+# toa = ee.Algorithms.Landsat.TOA(raw);
+# Map.addLayer(toa, {bands: ['B4', 'B3', 'B2'], max: 0.2}, 'toa reflectance');
+
 #Needed dependency:
 
 #pip install geopy
