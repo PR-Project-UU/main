@@ -80,11 +80,7 @@ filtered_data2.gdp = filtered_data2['gdp'].astype(float)  # changing column type
 # Employed_persons column
 filtered_data2.employed_persons = filtered_data2.employed_persons.astype(str).str.replace(r':', '0')
 filtered_data2.employed_persons = filtered_data2['employed_persons'].str.replace(r',', '')
-filtered_data2.employed_persons = filtered_data2['employed_persons'].astype(float)
-
-#Each city has a 19 instances of data : [2000,2018]
-#code for the missing values
-#case of 00xxx0000 not yet implemented
+"""The following will be removed"""
 def treat_missing(k):
     #nested helper function
     #needed because .index() doesn't retrieve position for more than one value
