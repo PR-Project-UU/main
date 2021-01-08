@@ -84,7 +84,7 @@ filtered_data2.employed_persons = filtered_data2['employed_persons'].astype(floa
 
 #Each city has a 19 instances of data : [2000,2018]
 #code for the missing values
-#I have not yet done the case where we have "holes" 
+#case of 00xxx0000 not yet implemented
 def treat_missing(k):
     #nested helper function
     #needed because .index() doesn't retrieve position for more than one value
