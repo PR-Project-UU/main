@@ -82,6 +82,126 @@ filtered_data2.employed_persons = filtered_data2.employed_persons.astype(str).st
 filtered_data2.employed_persons = filtered_data2['employed_persons'].str.replace(r',', '')
 filtered_data2.employed_persons = filtered_data2['employed_persons'].astype(float)
 
+#Each city has a 19 instances of data : [2000,2018]
+#code for the missing values
+#I have not yet done the case where we have "holes" 
+def treat_missing(k):
+    #nested helper function
+    #needed because .index() doesn't retrieve position for more than one value
+    #eg: for l=[0,0,2], l.index(0) returns 0 and not (0,1)
+    def get_zeros(k):
+        z=[]
+        for i in range(len(k)):
+            if k[i]==0:
+                z.append(i)
+        return z  
+    #turns the dataframe into lists
+    L1 = list(k.employed_persons)
+    L2 = list(k.gdp)
+    L3 = list(k.population) 
+    z1=get_zeros(L1)
+    z2=get_zeros(L2)
+    z3=get_zeros(L3)
+    #for missing single values at either ends 
+    
+    #employed_persons
+    if len(z1) == 1 and z1[0] == 0:
+        L1[0] = L1[1] - abs(L1[1]-L1[2])
+        k.employed_persons = L1
+    if len(z1) == 1 and z1[0] == 18:
+        L1[18] = L1[17] + abs(L1[17]-L1[16])
+        k.employed_persons = L1
+    
+    #gdp
+    if len(z2) == 1 and z2[0] == 0:
+        L2[0] = L2[1] - abs(L2[1]-L2[2])
+        k.gdp = L2
+    if len(z2) == 1 and z2[0] == 18:
+        L2[18] = L2[17] + abs(L2[17]-L2[16])
+        k.gdp = L2
+    
+    #population
+    if len(z3) == 1 and z3[0] == 0:
+        L3[0] = L3[1] - abs(L3[1]-L3[2])
+        k.population = L3
+    if len(z3) == 1 and z3[0] == 18:
+        L3[18] = L3[17] + abs(L3[17]-L3[16])
+        k.population = L3
+    #For missing values at ends (more than one)
+    #nested function
+    #[0,1]->True
+    #[0,2]->False
+    def evenly_spaced(l):
+        for i in range(len(l)-1):
+            if abs(l[i]-l[i+1])!=1:
+                return False
+        return True
+
+    #employed_persons
+    if (len(z1) >1) and evenly_spaced(z1) == True and z1[0] == 0:
+        for i in reversed(z1):
+            L1[i] = L1[i+1] - abs(L1[i+1] - L1[i+2])
+        k.employed_persons = L1
+    
+    #gdp
+    if (len(z2) >1) and evenly_spaced(z2) == True and z2[0] == 0:
+        for i in reversed(z2):
+            L2[i] = L2[i+1] - abs(L2[i+1] - L2[i+2])
+        k.gdp = L2
+        
+    #population
+    if (len(z3) >1) and evenly_spaced(z3) == True and z3[0] == 0:
+        for i in reversed(z3):
+            L3[i] = L3[i+1] - abs(L3[i+1] - L3[i+2])
+        k.population = L3
+        
+    #other end 
+    #employed_persons
+    if (len(z1) >1) and evenly_spaced(z1) == True and z1[-1] == 18:
+        for i in z1:
+            L1[i] = L1[i-1] + abs(L1[i-1] - L1[i-2])
+        k.employed_persons = L1
+    #gdp
+    if (len(z2) >1) and evenly_spaced(z2) == True and z2[-1] == 18:
+        for i in z2:
+            L2[i] = L2[i-1] + abs(L2[i-1] - L2[i-2])
+        k.gdp = L2
+    #population
+    if (len(z3) >1) and evenly_spaced(z3) == True and z3[-1] == 18:
+        for i in z3:
+            L3[i] = L3[i-1] + abs(L3[i-1] - L3[i-2])
+        k.population = L3
+    #If values are missing in the middle of the dataframe: -> apply what Simon showed on excel
+    #employed_persons
+    if ((len(z1) >1) and evenly_spaced(z1) == True) and (z1[-1] != 18 and z1[0] != 0):
+        p = L1[z1[0]-1] - L1[z1[-1]+1]
+        add = p/(len(z1)+1)
+        for i in z1:
+            L1[i]=L1[i-1]+add
+        k.employed_persons=L1
+    #gdp
+    if ((len(z2) >1) and evenly_spaced(z2) == True) and (z2[-1] != 18 and z2[0] != 0):
+        print(L2)
+        print(z2)
+        p = L2[z2[0]-1] - L2[z2[-1]+1]
+        add = p/(len(z2)+1)
+        for i in z2:
+            L2[i]=L2[i-1]+add
+        k.gdp=L2
+    #population
+    if ((len(z3) >1) and evenly_spaced(z3) == True) and (z3[-1] != 18 and z3[0] != 0):
+        p = L3[z3[0]-1] - L3[z3[-1]+1]
+        add = p/(len(z3)+1)
+        for i in z3:
+            L3[i]=L3[i-1]+add
+        k.population=L3
+    return
+
+#Applying the function for missing values
+for v in filtered_data2['METROREG'].unique():
+    treat_missing(filtered_data2[filtered_data2['METROREG'] == v])
+
+
 # OPTIMAL VALUES TO BE DETERMINED
 # As of now, we look at cities with minimum thresholds of population>500000 and GDP>40000,
 # could be changed if we need more/less data
@@ -142,16 +262,5 @@ for coords_city in coords_list:
     coords = coords_city [1]
     filtered_data3.loc[filtered_data3['METROREG'] == city, 'latitude'] = coords[0]
     filtered_data3.loc[filtered_data3['METROREG'] == city, 'longitude'] = coords[1]
-
-# We need to delete the cities for which we do not have enough data for,
-# here I set the the minimum number of instances to be at least 10 years of data per city
-# This dictionary stores the number of times each city appears in the data
-d2 = dict(filtered_data3['METROREG'].value_counts())
-
-# This for loop removes all rows for cities on which we do not have enough data
-for i in d2.keys():
-    if d2[i] < 10:  # 10 years at least
-        # Yields filtered_data3 in the shape (614, 7)
-        filtered_data3 = filtered_data3[filtered_data3.METROREG != i]
 
 # Print(filtered_data3)
