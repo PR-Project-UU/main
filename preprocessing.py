@@ -68,135 +68,74 @@ for i in countries:
     filtered_data2 = filtered_data2[filtered_data2.METROREG != i]
 
 # Preprocessing on the population column
-filtered_data2.population = filtered_data2.population.str.replace(r':', '0')  # replacing NAs (noted ':') by 0
-filtered_data2.population = filtered_data2['population'].str.replace(r',', '')  # removing commas
-filtered_data2.population = filtered_data2['population'].astype(int)  # changing column type
+filtered_data2.population = filtered_data2.population.replace(':', np.nan) # replacing NAs (noted ':') by NaN
+filtered_data2.population = filtered_data2['population'].replace(r',', '',regex=True)  # removing commas
+filtered_data2.population = filtered_data2['population'].astype(float)  #changing column type
 
 # Preprocessing on the GDP column
-filtered_data2.gdp = filtered_data2.gdp.str.replace(r':', '0')  # replacing missing values (noted ':') by 0
-filtered_data2.gdp = filtered_data2['gdp'].str.replace(r',', '')  # removing commas
+filtered_data2.gdp = filtered_data2.gdp.replace(':',np.nan )  # replacing missing values (noted ':') by NaN
+filtered_data2.gdp = filtered_data2['gdp'].replace(r',', '',regex=True)  # removing commas
 filtered_data2.gdp = filtered_data2['gdp'].astype(float)  # changing column type
 
 # Employed_persons column
-filtered_data2.employed_persons = filtered_data2.employed_persons.astype(str).str.replace(r':', '0')
-filtered_data2.employed_persons = filtered_data2['employed_persons'].str.replace(r',', '')
-"""The following will be removed"""
-def treat_missing(k):
-    #nested helper function
-    #needed because .index() doesn't retrieve position for more than one value
-    #eg: for l=[0,0,2], l.index(0) returns 0 and not (0,1)
-    def get_zeros(k):
-        z=[]
-        for i in range(len(k)):
-            if k[i]==0:
-                z.append(i)
-        return z  
-    #turns the dataframe into lists
-    L1 = list(k.employed_persons)
-    L2 = list(k.gdp)
-    L3 = list(k.population) 
-    z1=get_zeros(L1)
-    z2=get_zeros(L2)
-    z3=get_zeros(L3)
-    #for missing single values at either ends 
-    
-    #employed_persons
-    if len(z1) == 1 and z1[0] == 0:
-        L1[0] = L1[1] - abs(L1[1]-L1[2])
-        k.employed_persons = L1
-    if len(z1) == 1 and z1[0] == 18:
-        L1[18] = L1[17] + abs(L1[17]-L1[16])
-        k.employed_persons = L1
-    
-    #gdp
-    if len(z2) == 1 and z2[0] == 0:
-        L2[0] = L2[1] - abs(L2[1]-L2[2])
-        k.gdp = L2
-    if len(z2) == 1 and z2[0] == 18:
-        L2[18] = L2[17] + abs(L2[17]-L2[16])
-        k.gdp = L2
-    
-    #population
-    if len(z3) == 1 and z3[0] == 0:
-        L3[0] = L3[1] - abs(L3[1]-L3[2])
-        k.population = L3
-    if len(z3) == 1 and z3[0] == 18:
-        L3[18] = L3[17] + abs(L3[17]-L3[16])
-        k.population = L3
-    #For missing values at ends (more than one)
-    #nested function
-    #[0,1]->True
-    #[0,2]->False
-    def evenly_spaced(l):
-        for i in range(len(l)-1):
-            if abs(l[i]-l[i+1])!=1:
-                return False
-        return True
+filtered_data2.employed_persons = filtered_data2.employed_persons.replace(':', np.nan)
+filtered_data2.employed_persons = filtered_data2['employed_persons'].replace(r',', '',regex=True)
+filtered_data2.employed_persons = filtered_data2['employed_persons'].astype(float)
 
+#PERFORMS LINEAR REGRESSION TO REPLACE MISSING VALUES
+#Code works but does not replace values in dataframe, to be fixed
+
+from scipy.optimize import curve_fit
+def treat_missing(k):
+    def F(x,a,b): #nested function to approximate
+        return a*x+b
+    def nan_position(k):#nested helper function to get the postion of the missing values
+        z=np.argwhere(np.isnan(np.array(k)))
+        l=[]
+        for i in z:
+            l.append(i[0])
+        return l
+    #cities_removed=[]
+    #if not enough values-> drop the city, threshold of 8 missing values per column
+    #if all(x <=8 for x in list(k.isnull().sum())) == True:
+        #cities_removed.append(v)
     #employed_persons
-    if (len(z1) >1) and evenly_spaced(z1) == True and z1[0] == 0:
-        for i in reversed(z1):
-            L1[i] = L1[i+1] - abs(L1[i+1] - L1[i+2])
-        k.employed_persons = L1
+    missing=k.isnull().sum()
+    if missing[2] != 0: #first linear regression
+        L1=list(k.employed_persons)
+        m1=nan_position(k.employed_persons) #gets position of missing
+        X1=[i for i in range(len(list(k.employed_persons))) if str(list(k.employed_persons)[i])!='nan']
+        Y1=[i for i in list(k.employed_persons) if str(i)!='nan']
+        params1 = curve_fit(F, xdata=X1, ydata=Y1) #performs linear regression, params[0] contains a and b
+        for i in m1:
+            L1[i] = params1[0][0]*i + params1[0][1]
+        k.employed_persons=L1 #replacing the column, DO NOT USE DF
     
-    #gdp
-    if (len(z2) >1) and evenly_spaced(z2) == True and z2[0] == 0:
-        for i in reversed(z2):
-            L2[i] = L2[i+1] - abs(L2[i+1] - L2[i+2])
-        k.gdp = L2
-        
-    #population
-    if (len(z3) >1) and evenly_spaced(z3) == True and z3[0] == 0:
-        for i in reversed(z3):
-            L3[i] = L3[i+1] - abs(L3[i+1] - L3[i+2])
-        k.population = L3
-        
-    #other end 
-    #employed_persons
-    if (len(z1) >1) and evenly_spaced(z1) == True and z1[-1] == 18:
-        for i in z1:
-            L1[i] = L1[i-1] + abs(L1[i-1] - L1[i-2])
-        k.employed_persons = L1
-    #gdp
-    if (len(z2) >1) and evenly_spaced(z2) == True and z2[-1] == 18:
-        for i in z2:
-            L2[i] = L2[i-1] + abs(L2[i-1] - L2[i-2])
-        k.gdp = L2
-    #population
-    if (len(z3) >1) and evenly_spaced(z3) == True and z3[-1] == 18:
-        for i in z3:
-            L3[i] = L3[i-1] + abs(L3[i-1] - L3[i-2])
-        k.population = L3
-    #If values are missing in the middle of the dataframe: -> apply what Simon showed on excel
-    #employed_persons
-    if ((len(z1) >1) and evenly_spaced(z1) == True) and (z1[-1] != 18 and z1[0] != 0):
-        p = L1[z1[0]-1] - L1[z1[-1]+1]
-        add = p/(len(z1)+1)
-        for i in z1:
-            L1[i]=L1[i-1]+add
-        k.employed_persons=L1
-    #gdp
-    if ((len(z2) >1) and evenly_spaced(z2) == True) and (z2[-1] != 18 and z2[0] != 0):
-        print(L2)
-        print(z2)
-        p = L2[z2[0]-1] - L2[z2[-1]+1]
-        add = p/(len(z2)+1)
-        for i in z2:
-            L2[i]=L2[i-1]+add
-        k.gdp=L2
-    #population
-    if ((len(z3) >1) and evenly_spaced(z3) == True) and (z3[-1] != 18 and z3[0] != 0):
-        p = L3[z3[0]-1] - L3[z3[-1]+1]
-        add = p/(len(z3)+1)
-        for i in z3:
-            L3[i]=L3[i-1]+add
-        k.population=L3
+    if missing[3] != 0: #second linear regression
+        L2=list(k.gdp)
+        m2=nan_position(k.gdp) #gets position of missing
+        X2=[i for i in range(len(list(k.gdp))) if str(list(k.gdp)[i])!='nan']
+        Y2=[i for i in list(k.gdp) if str(i)!='nan']
+        params2 = curve_fit(F, xdata=X2, ydata=Y2) #performs linear regression, params[0] contains a and b
+        for i in m2:
+            L2[i] = params2[0][0]*i + params2[0][1]
+        k.gdp=L2 #replacing the column
+    
+    if missing[4] != 0: #third linear regression
+        L3=list(k.population)
+        m3=nan_position(k.population) #gets position of missing
+        X3=[i for i in range(len(list(k.population))) if str(list(k.population)[i])!='nan']
+        Y3=[i for i in list(k.population) if str(i)!='nan']
+        params3 = curve_fit(F, xdata=X3, ydata=Y3) #performs linear regression, params[0] contains a and b
+        for i in m3:
+            L3[i] = params3[0][0]*i + params3[0][1]
+        k.population=L3 #replacing the column
     return
 
-#Applying the function for missing values
+#applying function above
+
 for v in filtered_data2['METROREG'].unique():
     treat_missing(filtered_data2[filtered_data2['METROREG'] == v])
-
 
 # OPTIMAL VALUES TO BE DETERMINED
 # As of now, we look at cities with minimum thresholds of population>500000 and GDP>40000,
@@ -213,19 +152,6 @@ longitude of the cities in our data set. From there, we need to figure out a way
 images w/latitude & longitude
 """
 
-# # Directly covered from https://developers.google.com/earth-engine/guides/landsat
-# # Load a raw Landsat scene and display it.
-# raw = ee.Image('LANDSAT/LC08/C01/T1/LC08_044034_20140318');
-# Map.centerObject(raw, 10);
-# Map.addLayer(raw, {bands: ['B4', 'B3', 'B2'], min: 6000, max: 12000}, 'raw');
-
-# # Convert the raw data to radiance.
-# var radiance = ee.Algorithms.Landsat.calibratedRadiance(raw);
-# Map.addLayer(radiance, {bands: ['B4', 'B3', 'B2'], max: 90}, 'radiance');
-
-# # Convert the raw data to top-of-atmosphere reflectance.
-# toa = ee.Algorithms.Landsat.TOA(raw);
-# Map.addLayer(toa, {bands: ['B4', 'B3', 'B2'], max: 0.2}, 'toa reflectance');
 
 ######
 
