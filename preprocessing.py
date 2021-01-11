@@ -151,8 +151,8 @@ for i in range(len(INDEX)):
 # OPTIMAL VALUE TO BE DETERMINED
 # As of now, we look at cities with population>500000 ,
 # could be changed if we need more/less data
-filtered_data3 = filtered_data2[(filtered_data2['TIME'] >= 2000) &
-                                (filtered_data2['population'] > 500000)]
+filtered_data3 = filtered_data3[(filtered_data3['TIME'] >= 2000) &
+                                (filtered_data3['population'] > 500000)]
 
 ###### Geolocation part
 
