@@ -4,6 +4,7 @@ import numpy as np
 import geopy
 from geopy.geocoders import Nominatim
 from functools import partial
+import scipy
 
 
 # Allows for printing all columns and increases width; debug utility
@@ -82,23 +83,30 @@ filtered_data2.employed_persons = filtered_data2.employed_persons.replace(':', n
 filtered_data2.employed_persons = filtered_data2['employed_persons'].replace(r',', '',regex=True)
 filtered_data2.employed_persons = filtered_data2['employed_persons'].astype(float)
 
+#removes cities for which we have too much missing values-> no point in doing a linear rgression
+cities_removed = []
+for v in filtered_data2['METROREG'].unique():
+    if max(list(filtered_data2[filtered_data2['METROREG'] == v].isnull().sum()))>8:
+        cities_removed.append(v)
+for i in cities_removed: 
+    indexMetroreg = filtered_data2[filtered_data2['METROREG'] == i].index
+    filtered_data2.drop(indexMetroreg, inplace=True)
+
 #PERFORMS LINEAR REGRESSION TO REPLACE MISSING VALUES
-#Code works but does not replace values in dataframe, to be fixed
 
 from scipy.optimize import curve_fit
+
+def F(x,a,b):
+    return a*x+b
+
+def nan_position(k):
+    z=np.argwhere(np.isnan(np.array(k)))
+    l=[]
+    for i in z:
+        l.append(i[0])
+    return l
+
 def treat_missing(k):
-    def F(x,a,b): #nested function to approximate
-        return a*x+b
-    def nan_position(k):#nested helper function to get the postion of the missing values
-        z=np.argwhere(np.isnan(np.array(k)))
-        l=[]
-        for i in z:
-            l.append(i[0])
-        return l
-    #cities_removed=[]
-    #if not enough values-> drop the city, threshold of 8 missing values per column
-    #if all(x <=8 for x in list(k.isnull().sum())) == True:
-        #cities_removed.append(v)
     #employed_persons
     missing=k.isnull().sum()
     if missing[2] != 0: #first linear regression
@@ -109,8 +117,8 @@ def treat_missing(k):
         params1 = curve_fit(F, xdata=X1, ydata=Y1) #performs linear regression, params[0] contains a and b
         for i in m1:
             L1[i] = params1[0][0]*i + params1[0][1]
-        k.employed_persons=L1 #replacing the column, DO NOT USE DF
-    
+        k.employed_persons = L1
+        
     if missing[3] != 0: #second linear regression
         L2=list(k.gdp)
         m2=nan_position(k.gdp) #gets position of missing
@@ -129,20 +137,22 @@ def treat_missing(k):
         params3 = curve_fit(F, xdata=X3, ydata=Y3) #performs linear regression, params[0] contains a and b
         for i in m3:
             L3[i] = params3[0][0]*i + params3[0][1]
-        k.population=L3 #replacing the column
-    return
+        k.population=L3#replacing the column
+    return k
 
 #applying function above
 
-for v in filtered_data2['METROREG'].unique():
-    treat_missing(filtered_data2[filtered_data2['METROREG'] == v])
+INDEX = filtered_data2['METROREG'].unique()
+filtered_data3 = pd.DataFrame(columns=['TIME', 'METROREG', 'employed_persons', 'gdp', 'population'])
+for i in range(len(INDEX)):
+    i = filtered_data2[filtered_data2['METROREG'] == INDEX[i]].copy(deep = True)
+    filtered_data3 = filtered_data3.append(treat_missing(i))
 
-# OPTIMAL VALUES TO BE DETERMINED
-# As of now, we look at cities with minimum thresholds of population>500000 and GDP>40000,
+# OPTIMAL VALUE TO BE DETERMINED
+# As of now, we look at cities with population>500000 ,
 # could be changed if we need more/less data
 filtered_data3 = filtered_data2[(filtered_data2['TIME'] >= 2000) &
-                                (filtered_data2['population'] > 500000) &
-                                (filtered_data2['gdp'] > 40000)]
+                                (filtered_data2['population'] > 500000)]
 
 ###### Geolocation part
 
@@ -170,13 +180,18 @@ filtered_data3['latitude'] = filtered_data3['longitude'] = np.zeros(len(filtered
 
 # Creating a list with cities and their coords
 coords_list = []
-for city in sorted(list(set(list(filtered_data3.METROREG))))[:5]:  # [:5] is voor debug, weghalen later
+cities_removed2=[]
+for city in sorted(list(set(list(filtered_data3.METROREG)))): #[:5]:  # [:5] is voor debug, weghalen later
     try:
         city_coords = get_coord(city)
         coords_list.append([city, city_coords])
     except:
+        cities_removed2.append(city)
         print("Couldn't get coords of:", city)
 
+#removing cities for which we couldn't get the coordinates
+for i in cities_removed2:
+    filtered_data3=filtered_data3[filtered_data3.METROREG!=i]
 
 # Adding corresponding positions to cities
 for coords_city in coords_list:
@@ -185,4 +200,5 @@ for coords_city in coords_list:
     filtered_data3.loc[filtered_data3['METROREG'] == city, 'latitude'] = coords[0]
     filtered_data3.loc[filtered_data3['METROREG'] == city, 'longitude'] = coords[1]
 
-# Print(filtered_data3)
+print(filtered_data3) #needs to be saved a .csv for the next part
+#code works (tested)
