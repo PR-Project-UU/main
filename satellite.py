@@ -3,8 +3,10 @@ import ee
 ee.Initialize()
 
 from geopy import distance, Point
-from math import floor
 from logging import getLogger
+from math import floor
+from numpy import sign
+from rasterio.crs import CRS
 from time import perf_counter
 from typing import List, Tuple
 
@@ -12,6 +14,7 @@ from util import cloudmask_L457, spiralIndex
 
 class Capture:
     collection = ee.ImageCollection('LANDSAT/LE07/C01/T1_SR') # Stores the base collection for satellite data
+    crs: str = None                                           # The CRS code for the UTM zone based on the coordinates
     generated = []                                            # Stores the generated image names
     index = 0                                                 # Stores the index for data generation
     interval: Tuple[int, int] = (None, None)                  # Stores the time interval from start year to end year for image capturing
@@ -33,6 +36,7 @@ class Capture:
         self.origin = Point(lat, lon)
         self.size = size
         self.interval = (start_year, end_year)
+        self.crs = CRS.from_epsg(32700 - (sign(lat) + 1) / 2 * 100 + floor((180 + lon) / 6) + 1).wkt
 
     def datesFromIndex(self, index) -> Tuple[str, str]:
         '''Generates a start and end date for the satellite images from a specified index
@@ -74,10 +78,11 @@ class Capture:
         name = self.nameFromIndex(index)
 
         task = ee.batch.Export.image.toDrive(**{
-            'image': data.median(),
+            'image': data.median().reproject(self.crs, None, 30),
             'folder': 'landsat',
             'description': name,
-            'scale': 30,
+            #'scale': 30,
+            #'crs': 'EPSG:4326',
             'region': geometry,
             'maxPixels': 1e9
         })
@@ -143,9 +148,9 @@ class Capture:
             str: The filename appropriate for the index
         '''
 
-        return '{}_{}-{}-{}'.format(
-            round(self.origin.latitude),                # A shorthand for the latitude of the origin
-            round(self.origin.longitude),               # A shorthand for the longitude of the origin
+        return '{:.2f}_{:.2f}-{}-{}'.format(
+            self.origin.latitude,                       # A shorthand for the latitude of the origin
+            self.origin.longitude,                      # A shorthand for the longitude of the origin
             index % self.size,                          # The index of the tile (0 through self.size)
             self.interval[0] + floor(index / self.size) # The year of the image
         )
