@@ -200,5 +200,4 @@ for coords_city in coords_list:
     filtered_data3.loc[filtered_data3['METROREG'] == city, 'latitude'] = coords[0]
     filtered_data3.loc[filtered_data3['METROREG'] == city, 'longitude'] = coords[1]
 
-print(filtered_data3) #needs to be saved a .csv for the next part
-#code works (tested)
+filtered_data3.to_csv('./meta_features.csv')
