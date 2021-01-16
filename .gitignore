@@ -5,3 +5,4 @@ token.pickle
 *.log 
 .ipynb_checkpoints/
 data/raw/
+fix.py
