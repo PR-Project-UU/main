@@ -6,3 +6,4 @@ token.pickle
 .ipynb_checkpoints/
 data/raw/
 fix.py
+generate.pickle

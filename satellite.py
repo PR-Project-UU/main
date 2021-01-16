@@ -37,6 +37,7 @@ class Capture:
         self.size = size
         self.interval = (start_year, end_year)
         self.crs = CRS.from_epsg(32700 - (sign(lat) + 1) / 2 * 100 + floor((180 + lon) / 6) + 1).wkt
+        self.log.debug('Create capture area for coordinates (%.2f, %.2f) in interval (%s, %s)', lat, lon, start_year, end_year)
 
     def datesFromIndex(self, index) -> Tuple[str, str]:
         '''Generates a start and end date for the satellite images from a specified index
@@ -49,7 +50,7 @@ class Capture:
         '''
         year = self.interval[0] + floor(index / self.size)
 
-        if year > self.interval[1]:
+        if year >= self.interval[1]:
             raise IndexError('The index \'%s\' is out of bounds, and generates a year beyond the end date', year)
 
         return ('%s-01-01' % year, '%s-12-31' % year)
@@ -91,7 +92,7 @@ class Capture:
         self.generated.append(name)
         self.log.info('Started task for image "%s", index: %s', name, index)
 
-    def generateAll(self, download = False, save_path = './', delete = True, timeout = None):
+    def generateAll(self, download = False, save_path = './', delete = True, timeout = None) -> List[str]:
         '''Generates all images in this capture area
 
         Args:
@@ -99,6 +100,9 @@ class Capture:
             save_path (str, optional): The path to save the downloaded files to. Defaults to './'.
             delete (bool, optional): Whether or not to delete the file from Google Drive after downloading. Defaults to True.
             timeout (int, optional): The number of seconds to keep looking for downloadable files. Defaults to None, which means the number of generated files * 3 * 60.
+
+        Returns:
+            List[str]: A list of filenames of files that still need to be downloaded.
         '''
         length = self.size * (self.interval[1] - self.interval[0])
 
@@ -106,6 +110,7 @@ class Capture:
         self.generated = []
 
         for i in range(length):
+            self.index = i
             self.generate(i)
 
         self.log.info('Generated all images. Expected load time is %s minutes', length * 3)
@@ -136,7 +141,9 @@ class Capture:
             if len(to_download) == 0:
                 self.log.info('Sucessfully generated and downloaded %i files', len(self.generated))
             else:
-                self.log.warn('Failed to download %i of %i generated files.\nThey were: %s', len(to_download), len(self.generated), to_download)
+                self.log.warning('Failed to download %i of %i generated files.\nThey were: %s', len(to_download), len(self.generated), to_download)
+
+        return to_download
 
     def nameFromIndex(self, index) -> str:
         '''Generates a filename from a specified index

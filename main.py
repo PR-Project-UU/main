@@ -7,10 +7,14 @@ def not_implemented():
 
 def generate():
     '''Runs the generation cycle'''
-    row = 0
+    # Import here to prevent slowdown in different modes
+    from generate import Generator
+
+    gen = Generator()
+    gen.run(args.save_path[0], args.delete)
 
 mode_table = {
-    'generate': not_implemented, #generate,
+    'generate': generate,
     'preprocess': not_implemented,
     'predict': not_implemented,
     'train': not_implemented,

@@ -4,12 +4,14 @@
 The program uses several arguments to control the flow of the program.
 They are described in this section.
 
-Argument     | Description                                                        | Shorthand | Type   | Default      | Notes
-:---         | :---                                                               | :---:     | :---:  | :---         | :---
-`--delete`   | Delete files from after downloading or preprocessing them.         | `-e`      | N/A    | False        | 1
-`--log`      | Enables debug, or sets the output level.                           | `-l`      | String | `"info"`     | 2
-`--mode`     | Sets the mode the program is run in.                               | `-m`      | String | `"generate"` | 3
-`--savepath` | Where to save files after they've been downloaded or preprocessed. | `-s`      | String | `"./"`       | N/A
+Argument        | Description                                                        | Shorthand | Type    | Default      | Notes
+:---            | :---                                                               | :---:     | :---:   | :---         | :---
+`--delete`      | Delete files from after downloading or preprocessing them.         | `-e`      | N/A     | False        | 1
+`--log`         | Enables debug, or sets the output level.                           | `-l`      | String  | `"info"`     | 2
+`--mode`        | Sets the mode the program is run in.                               | `-m`      | String  | `"generate"` | 3
+<!-- `--no-download` | Disables downloading after generating files.                       | N/A       | N/A     | False        | N/A -->
+`--save-path`   | Where to save files after they've been downloaded or preprocessed. | `-s`      | String  | `"./"`       | N/A
+<!-- `--timeout`     | The timeout to wait for downloads to be ready in seconds.          | `-t`      | Integer | None         | 4 -->
 
 ### Argument Notes
 #### 1. Delete
@@ -35,3 +37,8 @@ The default mode is data generation (`generate`), and uses Google Earth Engine t
 The preprocess mode (`preprocess`) prepares the generated images for use in the neural network.  
 The model training mode (`train`) trains a Generative Adversarial Model (GAN) on the acquired data. (not yet implemented)  
 The image prediction mode (`predict`) uses a trained model to predict/generate a new image from acquired data. (not yet implemented)
+
+#### 4. Timeout
+The timeout flag sets the time to wait for downloads after executing a generate order to the Google Earth Engine servers.
+The default value of "None" sets the timeout to three times the number of files generated in minutes.
+The value to provide is time in seconds.

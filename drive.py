@@ -1,7 +1,6 @@
 import io
 import pickle
 import os.path
-from typing import Callable
 
 from logging import getLogger
 
@@ -33,9 +32,9 @@ class Drive:
                 flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
                 creds = flow.run_local_server(port = 0)
             with open('token.pickle', 'wb') as token:
-                token.dump(creds, token)
+                token.write(pickle.dumps(creds))
 
-        self.service = build('drive', 'v3', credentials=creds)
+        self.service = build('drive', 'v3', credentials=creds, cache_discovery=False)
 
     def download(self, name: str, extension: str, save_path='./', delete: bool = False) -> bool:
         self.log.info('Looking to download "%s"', name)
@@ -59,28 +58,28 @@ class Drive:
 
         # Make sure the file to save doesn't already exist
         if os.path.exists(save_path + name + extension):
-            log.error('File already exists at path "%s"', save_path + name)
+            log.error('File already exists at path "%s"', save_path + name + extension)
             return False
 
         # Find the file in the drive
         while True:
-            response = self.service.files().list(q="name='%s'" % name, spaces='drive', fields='nextPageToken, files(id, name)', pageToken=page_token).execute()
+            response = self.service.files().list(q="name='%s'" % (name + extension), spaces='drive', fields='nextPageToken, files(id, name)', pageToken=page_token).execute()
             page_token = response.get('nextPageToken', None)
 
             for file in response.get('files', []):
-                results.push((file.get('name'), file.get('id')))
+                results.append((file.get('name'), file.get('id')))
 
             if page_token is None:
                 break
 
         # Make sure we got any results
         if len(results) == 0:
-            log.info('Found no files with name "%s"', name)
+            log.debug('Found no files with name "%s"', name + extension)
             return False
 
         # Download the file(s)
         for i, (file_name, file_id) in enumerate(results):
-            log.info('Downloading file %d of %d with name %s', i, len(results), file_name)
+            log.info('Downloading file %d of %d with name %s', i + 1, len(results), file_name)
 
             request = self.service.files().get_media(fileId=file_id)
             fh = io.BytesIO()
@@ -98,6 +97,6 @@ class Drive:
 
             if delete:
                 log.info('Deleting downloaded file "%s" from Drive', file_name)
-                self.service.files().delete(file_id).execute()
+                self.service.files().delete(fileId=file_id).execute()
 
         return True
