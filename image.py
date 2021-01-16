@@ -10,12 +10,18 @@ def crop(image: np.ndarray):
 
     Args:
         image (np.ndarray): The image to crop
+
+    Returns:
+        (np.ndarray): The cropped image
     '''
 
     padding = floor((min(len(image[0]), len(image[0][0])) - 66) / 2)
+    cropped = np.zeros((image.shape[0], 66, 66))
     
-    for layer in image:
-        layer = layer[padding:(padding + 66), padding:(padding+66)]
+    for i, layer in enumerate(image):
+        cropped[i] = layer[padding:(padding + 66), padding:(padding+66)]
+
+    return cropped
 
 def preprocess(file: str, save_path: str = None, delete_original: bool = False, overwrite: bool = True):
     '''Preprocesses an image based on its filename
