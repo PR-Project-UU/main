@@ -59,8 +59,8 @@ def preprocess(file: str, save_path: str = None, delete_original: bool = False, 
     with rasterio.open(file) as f:
         image = f.read()
 
-    # Process the image
-    crop(image)
+    # Process the image (crop and normalize [0.0, 0.1))
+    image = crop(image) / 3000
 
     # Save the image
     with open(save_file, 'wb') as f:
