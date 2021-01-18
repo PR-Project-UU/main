@@ -9,6 +9,7 @@ from time import sleep
 from typing import List, Tuple
 
 class Generator():
+    available = 3000
     dataframe = None
     download: List[Tuple[str, str]] = []
     drive = Drive()
@@ -21,6 +22,10 @@ class Generator():
             with open('./generate.pickle', 'rb') as f:
                 self.status = pickle.loads(f.read())
 
+        for city in self.status:
+            self.download.extend((name, city) for name in self.status[city]['tdl'])
+
+        self.available = 3000 - len(self.download)
         self.dataframe = pd.read_csv('./meta_features.csv')
 
     def run(self, save_path: str, delete: bool = False):
@@ -38,6 +43,8 @@ class Generator():
                 for item in sorted(downloaded):
                     del self.download[item - shift]
                     shift += 1
+
+                self.available += len(downloaded)
 
                 if not city in self.status:
                     self.status[city] = {
@@ -64,11 +71,17 @@ class Generator():
                     continue
 
                 for i in range(self.status[city]['index'], length):
+                    if self.limit <= 0:
+                        self.log.warning('At generate limit (available = %s), waiting five minutes', self.available)
+                        sleep(300)
+                        break
+
                     capture.generate(i)
                     name = capture.nameFromIndex(i)
                     self.status[city]['index'] += 1
                     self.status[city]['tdl'].append(name)
                     self.download.append((name, city))
+                    self.limit -= 1
 
                 with open('./generate.pickle', 'wb') as f:
                     f.write(pickle.dumps(self.status))
