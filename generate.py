@@ -28,7 +28,7 @@ class Generator():
         self.available = 3000 - len(self.download)
         self.dataframe = pd.read_csv('./meta_features.csv')
 
-    def run(self, save_path: str, delete: bool = False):
+    def run(self, save_path: str, delete: bool):
         '''Runs the generating process and catches keyboard interrupts'''
         try:
             for city in self.dataframe['METROREG'].unique():
@@ -71,7 +71,7 @@ class Generator():
                     continue
 
                 for i in range(self.status[city]['index'], length):
-                    if self.limit <= 0:
+                    if self.available <= 0:
                         self.log.warning('At generate limit (available = %s), waiting five minutes', self.available)
                         sleep(300)
                         break
@@ -81,7 +81,7 @@ class Generator():
                     self.status[city]['index'] += 1
                     self.status[city]['tdl'].append(name)
                     self.download.append((name, city))
-                    self.limit -= 1
+                    self.available -= 1
 
                 with open('./generate.pickle', 'wb') as f:
                     f.write(pickle.dumps(self.status))
