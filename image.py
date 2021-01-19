@@ -48,7 +48,7 @@ def preprocess(file: str, save_path: str = None, delete_original: bool = False, 
         log.error('Save path "%s" is invalid or does not exist', save_path)
         return
 
-    save_file = save_path + '.'.join(file.split('/')[-1:].split('.')[:-1]) + '.pickle'
+    save_file = save_path + '.'.join(file.split('/')[-1].split('.')[:-1]) + '.pickle'
 
     # Check if the file does already exist
     if not overwrite and path.exists(save_file):
