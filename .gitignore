@@ -5,6 +5,7 @@ token.pickle
 *.log 
 .ipynb_checkpoints/
 data/raw/
+data/clean/
 fix.py
 generate.pickle
 raw_data.zip

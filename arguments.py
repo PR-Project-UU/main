@@ -7,6 +7,7 @@ parser.add_argument('-e', '--delete', action='store_true', default=False, help='
 parser.add_argument('-p', '--load-path', nargs=1, default=['./data/raw/'], type=str, help='The path to load images from')
 parser.add_argument('-l', '--log', nargs='?', default='info', const='debug', type=str, choices=['debug', 'info', 'warning', 'error', 'critical'], help='Sets the console\'s output level')
 parser.add_argument('-m', '--mode', nargs=1, default=['generate'], type=str, choices=['generate', 'preprocess', 'train', 'predict'], help='The mode to run the program in')
+parser.add_argument('-n', '--no-overwrite', action='store_true', default=False, help='Prevent overwriting files that already exist')
 parser.add_argument('-o', '--model', nargs=1, default=['cgan.pickle'], type=str, help='The name of the model to load, use, or save to')
 #parser.add_argument('--no-download', action='store_true', default=False, help='Don\'t download after generating')
 parser.add_argument('-s', '--save-path', nargs=1, default=['./data/raw'], type=str, help='The path to save downloaded files to')

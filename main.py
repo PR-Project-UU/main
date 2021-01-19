@@ -23,7 +23,7 @@ def preprocess():
 
     for file in files:
         if file.split('.')[-1] == 'tif':
-            preprocess(file, args.save_path[0], args.delete)
+            preprocess(file, args.save_path[0], args.delete, not args.no_overwrite)
 
     getLogger('preprocess').info('Preprocessed %s files to "%s"', len(files), args.save_path[0] or args.load_path[0])
 

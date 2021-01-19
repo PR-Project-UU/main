@@ -4,14 +4,15 @@
 The program uses several arguments to control the flow of the program.
 They are described in this section.
 
-Argument        | Description                                                        | Shorthand | Type    | Default         | Notes
-:---            | :---                                                               | :---:     | :---:   | :---            | :---
-`--delete`      | Delete files from after downloading or preprocessing them.         | `-e`      | N/A     | False           | 1
-`--load-path`   | The path to load images from                                       | `-p`      | String  | `"./data/raw"`  | 4
-`--log`         | Enables debug, or sets the output level.                           | `-l`      | String  | `"info"`        | 2
-`--mode`        | Sets the mode the program is run in.                               | `-m`      | String  | `"generate"`    | 3
-`--model`       | Sets the model to use for predicting or further training.          | `-o`      | String  | `"cgan.pickle"` | N/A
-`--save-path`   | Where to save files after they've been downloaded or preprocessed. | `-s`      | String  | `"./data/raw"`  | N/A
+Argument         | Description                                                        | Shorthand | Type    | Default         | Notes
+:---             | :---                                                               | :---:     | :---:   | :---            | :---
+`--delete`       | Delete files from after downloading or preprocessing them.         | `-e`      | N/A     | False           | 1
+`--load-path`    | The path to load images from                                       | `-p`      | String  | `"./data/raw"`  | 4
+`--log`          | Enables debug, or sets the output level.                           | `-l`      | String  | `"info"`        | 2
+`--mode`         | Sets the mode the program is run in.                               | `-m`      | String  | `"generate"`    | 3
+`--model`        | Sets the model to use for predicting or further training.          | `-o`      | String  | `"cgan.pickle"` | N/A
+`--no-overwrite` | Prevents overwriting files during preprocessing.                   | `-n`      | N/A     | False           | N/A
+`--save-path`    | Where to save files after they've been downloaded or preprocessed. | `-s`      | String  | `"./data/raw"`  | N/A
 
 <!-- `--no-download` | Disables downloading after generating files.                       | N/A       | N/A     | False          | N/A -->
 <!-- `--timeout`     | The timeout to wait for downloads to be ready in seconds.          | `-t`      | Integer | None           | 5 -->
