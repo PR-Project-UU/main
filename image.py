@@ -15,11 +15,11 @@ def crop(image: np.ndarray):
         (np.ndarray): The cropped image
     '''
 
-    padding = floor((min(len(image[0]), len(image[0][0])) - 66) / 2)
-    cropped = np.zeros((image.shape[0], 66, 66))
+    padding = floor((min(len(image[0]), len(image[0][0])) - 64) / 2)
+    cropped = np.zeros((image.shape[0], 64, 64))
     
     for i, layer in enumerate(image):
-        cropped[i] = layer[padding:(padding + 66), padding:(padding+66)]
+        cropped[i] = layer[padding:(padding + 64), padding:(padding + 64)]
 
     return cropped
 
