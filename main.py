@@ -27,11 +27,20 @@ def preprocess():
 
     getLogger('preprocess').info('Preprocessed %s files to "%s"', len(files), args.save_path[0] or args.load_path[0])
 
+def train():
+    '''Runs the training cycle'''
+    # Import here to prevent slowdown in different modes
+    from train import Dataset, Trainer
+
+    ds = Dataset(args.load_path[0])
+    trainer = Trainer(ds, args.model[0], args.save_path[0], args.epochs[0])
+    trainer.fit()
+
 mode_table = {
     'generate': generate,
     'preprocess': preprocess,
     'predict': not_implemented,
-    'train': not_implemented,
+    'train': train,
 }
 
 mode_table[args.mode[0]]()
