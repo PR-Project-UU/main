@@ -23,14 +23,29 @@ def crop(image: np.ndarray):
 
     return cropped
 
-def preprocess(file: str, save_path: str = None, delete_original: bool = False, overwrite: bool = True):
+def normalize(image: np.ndarray) -> np.ndarray:
+    image /= np.nanmax(image)
+    image = (image * 3000.0) / 1500.0 - 1.0
+    return image.astype('float32')
+
+def denormalize(output: np.ndarray) -> np.ndarray:
+    image = output * 0.5 + 0.5
+    print('%.5f -> %.5f' % (np.nanmax(output), np.nanmax(image)))
+    return image
+
+def preprocess(file: str, save_path: str = None, delete_original: bool = False, overwrite: bool = True, crop_image: bool = True, return_value: bool = False):
     '''Preprocesses an image based on its filename
 
     Args:
         file (str): The filename (and path) to load the image from.
         save_path (str, optional): The path to save the new image to, if None saves it to the same directory. Defaults to None.
         delete_original (bool, optional): Deletes the original image after preprocessing it. Defaults to False.
-        overwrite (bool, optional): Overwrite the file if it already exists
+        overwrite (bool, optional): Overwrite the file if it already exists. Defaults to True.
+        crop_image (bool, optional): Crops the image to 64x64 size from center. Defaults to True.
+        return_value (bool, optional): Returns the np array instead of pickling it to file. Defaults to False.
+
+    Returns:
+        (np.ndarray | None): Returns the image if return_value is True.
     '''
     log = getLogger('preprocessing')
 
@@ -44,14 +59,14 @@ def preprocess(file: str, save_path: str = None, delete_original: bool = False, 
             save_path = '/'.join(file_path[:-1]) + '/'
 
     # Check if the save_path is valid
-    if not path.exists(save_path):
+    if not path.exists(save_path) and not return_value:
         log.error('Save path "%s" is invalid or does not exist', save_path)
         return
 
     save_file = save_path + '.'.join(file.split('/')[-1].split('.')[:-1]) + '.pickle'
 
     # Check if the file does already exist
-    if not overwrite and path.exists(save_file):
+    if not overwrite and path.exists(save_file) and not return_value:
         log.error('Save file "%s" already exists and overwrite is disabled', save_file)
         return
 
@@ -59,15 +74,23 @@ def preprocess(file: str, save_path: str = None, delete_original: bool = False, 
     with rasterio.open(file) as f:
         image = f.read()
 
-    # Process the image (crop and normalize [0.0, 0.1))
-    image = np.moveaxis(crop(image) / 3000, 0, -1)
+    # Process the image (crop and normalize [-1.0, 1.0])
+    if crop_image:
+        image = np.moveaxis(normalize(crop(image)), 0, -1)
+    else:
+        image = np.moveaxis(normalize(image), 0, -1)
 
     # Save the image
-    with open(save_file, 'wb') as f:
-        pickle.dump(image, f)
+    if not return_value:
+        with open(save_file, 'wb') as f:
+            pickle.dump(image, f)
 
     # Delete the original if so desired
     if delete_original:
         remove(file)
 
-    log.info('Preprocessed image "%s" to "%s"', file, save_path)
+    if not return_value:
+        log.info('Preprocessed image "%s" to "%s"', file, save_path)
+    else:
+        log.info('Preprocessed image "%s"', file)
+        return image

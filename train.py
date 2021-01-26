@@ -5,6 +5,7 @@ import numpy as np
 from os import path
 import pandas as pd
 import pickle
+from sys import stdout
 import tensorflow as tf
 from time import time
 
@@ -49,17 +50,31 @@ class Dataset():
     def generator(self):
         for (inp, tar, meta) in self.datapoints:
             with open(path.join(self.load_path, inp), 'rb') as inp_file:
-                inp_image = pickle.load(inp_file) * 2 - 1
+                inp_image = pickle.load(inp_file)
             
             with open(path.join(self.load_path, tar), 'rb') as tar_file:
-                tar_image = pickle.load(tar_file) * 2 - 1
+                tar_image = pickle.load(tar_file)
 
-            meta_reshaped = tf.repeat(tf.repeat(np.moveaxis(tf.expand_dims(tf.expand_dims(meta, 1, 0), 1, 0), 0, -1), 64, axis=0), 64, axis=1)
+            # meta_reshaped = tf.repeat(tf.repeat(np.moveaxis(tf.expand_dims(tf.expand_dims(meta, 1, 0), 1, 0), 0, -1), 64, axis=0), 64, axis=1)
 
-            yield (inp_image[None, :, :, :], tar_image[None, :, :, :], meta_reshaped[None, :, :, :])
+            if np.isnan(np.sum(inp_image)):
+                self.log.debug('Input image contains NaN: "%s"', inp)
+                continue
+            elif np.isnan(np.sum(tar_image)):
+                self.log.debug('Target image contains NaN: "%s"', tar)
+                continue
+            # elif np.isnan(np.sum(meta)):
+            #     self.log.debug('Meta data contains NaN: "%s"', inp)
+            #     continue
+            
+            # breakpoint()
+
+            yield (tf.cast(inp_image, tf.float32), tf.cast(tar_image, tf.float32))
+            # yield (tf.cast(inp_image, tf.float32), tf.cast(tar_image, tf.float32), tf.cast(meta_reshaped, tf.float32))
 
     def dataset(self):
-        return tf.data.Dataset.from_generator(self.generator, output_types=(tf.float64, tf.float64, tf.float64), output_shapes=([None, 64, 64, 3], [None, 64, 64, 3], [None, 64, 64, 3]))
+        return tf.data.Dataset.from_generator(self.generator, output_types=(tf.float32, tf.float32), output_shapes=([64, 64, 3], [64, 64, 3]))
+        # return tf.data.Dataset.from_generator(self.generator, output_types=(tf.float32, tf.float32, tf.float32), output_shapes=([64, 64, 3], [64, 64, 3], [64, 64, 3]))
 
 class Trainer():
     dataset = None
@@ -71,8 +86,8 @@ class Trainer():
     log = getLogger('trainer')
     save_path = None
 
-    def __init__(self, dataset, model: str = None, save_path: str = None, epochs: int = 150):
-        self.dataset = dataset.dataset()
+    def __init__(self, dataset, model: str = None, save_path: str = None, epochs: int = 150, batch_size: int = 1):
+        self.dataset = dataset.dataset().shuffle(epochs * 10).batch(batch_size)
         self.epochs = epochs
         self.save_path = save_path
 
@@ -88,12 +103,15 @@ class Trainer():
             self.log.info('Loaded model from "%s"', model)
 
     def fit(self):
-        for epoch in range(self.epochs):
-            for _, (input_image, target, meta) in self.dataset.enumerate():
-                self.train_step(input_image, target, meta)
-                print('.', end='')
+        ds = iter(self.dataset)
 
-            print()
+        for epoch in range(self.epochs):
+            for step in range(10): # NOTE: The range here limits the steps per epoch
+                input_image, target = next(ds)
+                self.train_step(input_image, target)
+                # input_image, target, meta = next(ds)
+                # self.train_step(input_image, target, meta)
+                self.log.info('Step %d', step + 1)
 
             # Save every 20 epochs if so desired
             if (epoch + 1) % 20 == 0 and not self.save_path is None:
@@ -114,19 +132,24 @@ class Trainer():
 
     def save(self):
         '''Saves the trained models' weights to file'''
-        name = encode(int(time())) + '.pickle'
+        name = encode(int(time()))[2:] + '.pickle'
 
-        with open(path.join(self.save_path, name, 'wb')) as f:
+        with open(path.join(self.save_path, name), 'wb') as f:
             pickle.dump((self.generator.get_weights(), self.discriminator.get_weights()), f)
         
         self.log.info('Saved model to "%s"', name)
 
-    def train_step(self, input_image, target, meta):
+    @tf.function
+    def train_step(self, input_image, target):
+    # def train_step(self, input_image, target, meta):
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-            gen_output = self.generator([input_image, meta], training = True)
+            gen_output = self.generator(input_image, training = True)
+            # gen_output = self.generator([input_image, meta], training = True)
         
-            disc_real_output = self.discriminator([input_image, meta, target], training = True)
-            disc_gen_output = self.discriminator([input_image, meta, gen_output], training = True)
+            # disc_real_output = self.discriminator([input_image, meta, target], training = True)
+            # disc_gen_output = self.discriminator([input_image, meta, gen_output], training = True)
+            disc_real_output = self.discriminator([input_image, target], training=True)
+            disc_gen_output = self.discriminator([input_image, gen_output], training=True)
 
             gen_total_loss, _, _ = generator_loss(disc_gen_output, gen_output, target)
             disc_loss = discriminator_loss(disc_real_output, disc_gen_output)

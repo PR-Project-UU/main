@@ -1,8 +1,7 @@
-from ee import Image, Reducer # NOTE: This won't work if ee isn't already initialized, because Reducer won't exist
 from math import ceil, sqrt
-from typing import Tuple
+from typing import Tuple, List
 
-def cloudmask_L457(image: Image) -> Image:
+def cloudmask_L457(image):
     '''Function to mask clouds based on the pixel_qa band of the LandsatSR data
 
     Args:
@@ -10,7 +9,8 @@ def cloudmask_L457(image: Image) -> Image:
 
     Returns:
         Image: Cloudmasked output image
-    '''        
+    '''
+    from ee import Reducer # NOTE: This won't work if ee isn't already initialized, because Reducer won't exist
     qa = image.select('pixel_qa')
     
     # If the cloud bit (5) is set and the cloud confidence (7) is high
@@ -52,3 +52,9 @@ def spiralIndex(index) -> Tuple[int, int]:
         return (-k + (m - index), -k)
     
     return (k, -k + (m - index - t))
+
+# max employed_persons data, gdp data, and population
+meta_max_table = [8275.0, 865306.33, 14257962.0]
+
+def normalize_meta(metadata: List[float]) -> List[float]:
+    return [metadata[0] / meta_max_table[0], metadata[1] / meta_max_table[1], metadata[2] / meta_max_table[2]]

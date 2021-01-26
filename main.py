@@ -5,6 +5,44 @@ def not_implemented():
     log = getLogger()
     log.info('This mode (%s) is yet to be implemented', args.mode[0])
 
+def create():
+    '''Runs the prediction cycle'''
+    from create import Creator
+    from sys import stdin
+    from os import path
+    from matplotlib import pyplot as plt
+    import numpy as np
+
+    creator = Creator(args.model[0], args.save_path[0])
+    log = getLogger('creator')
+
+    if args.load_path[0] is None or not args.load_path[0].split('.')[-1] in ['pickle', 'tif']:
+        try:
+            lines = int(stdin.readline())
+        except ValueError:
+            log.critical('The first value of stdin should be the number of input files when no "--load_path" is provided.')
+            exit(1)
+
+        paths = []
+        
+        for _ in range(lines):
+            paths.append(stdin.readline()[:-1])
+        
+        for path in paths:
+            image = creator.create(path, args.meta)
+            filename = '.'.join(path.split('/')[-1].split('.')[:-1]) + '.png'
+
+            plt.imsave(path.join(args.save_path[0], filename), image, vmin=0, vmax=1)
+    else:
+        image = creator.create(args.load_path[0], args.meta)
+        filename = '.'.join(args.load_path[0].split('/')[-1].split('.')[:-1]) + '.png'
+
+        print(np.nanmin(image), np.nanmax(image))
+
+        plt.imsave(path.join(args.save_path[0], filename), image, vmin=0, vmax=1)
+
+    log.info('We did it')
+
 def generate():
     '''Runs the generation cycle'''
     # Import here to prevent slowdown in different modes
@@ -39,7 +77,7 @@ def train():
 mode_table = {
     'generate': generate,
     'preprocess': preprocess,
-    'predict': not_implemented,
+    'predict': create,
     'train': train,
 }
 

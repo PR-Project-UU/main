@@ -1,5 +1,4 @@
 import tensorflow as tf
-from os import path
 
 def downsample(filters, size, apply_batchnorm = True, seed = None):
     '''Creates a downsample layer group
@@ -13,7 +12,7 @@ def downsample(filters, size, apply_batchnorm = True, seed = None):
     Returns:
         Sequential: A downsample model part
     '''
-    init = tf.random_normal_initializer(seed=seed)
+    init = tf.random_normal_initializer(0., 0.02, seed=seed)
     model = tf.keras.Sequential()
     
     model.add(tf.keras.layers.Conv2D(filters, size, 2, 'same', kernel_initializer=init, use_bias=False))
@@ -37,7 +36,7 @@ def upsample(filters, size, apply_dropout = False, seed = None):
     Returns:
         Sequential: A upscale model part
     '''
-    init = tf.random_normal_initializer(seed=seed)
+    init = tf.random_normal_initializer(0., 0.02, seed=seed)
     model = tf.keras.Sequential()
     
     model.add(tf.keras.layers.Conv2DTranspose(filters, size, 2, 'same', kernel_initializer=init, use_bias=False))
@@ -52,8 +51,8 @@ def upsample(filters, size, apply_dropout = False, seed = None):
     return model
 
 def Generator():
-    inputs = tf.keras.layers.Input(shape=[64, 64, 3])
-    meta_input = tf.keras.layers.Input(shape=[64, 64, 3])
+    inputs = tf.keras.layers.Input(shape=[64, 64, 3], dtype=tf.float32)
+    #meta_input = tf.keras.layers.Input(shape=[64, 64, 3], dtype=tf.float32)
 
     down_stack = [
         downsample(64, 4, apply_batchnorm=False), # (32, 32)
@@ -72,10 +71,11 @@ def Generator():
         upsample(128, 4) # (32, 32)
     ]
 
-    init = tf.random_normal_initializer()
+    init = tf.random_normal_initializer(0., 0.02)
     last = tf.keras.layers.Conv2DTranspose(3, 4, 2, 'same', kernel_initializer=init, activation='tanh')
 
-    x = tf.keras.layers.Concatenate()([inputs, meta_input]) # Merge inputs with meta features
+    #x = tf.keras.layers.Concatenate()([inputs, meta_input]) # Merge inputs with meta features
+    x = inputs
 
     skips = []
 
@@ -91,7 +91,8 @@ def Generator():
 
     x = last(x)
 
-    return tf.keras.Model(inputs=[inputs, meta_input], outputs=x)
+    return tf.keras.Model(inputs=inputs, outputs=x)
+    #return tf.keras.Model(inputs=[inputs, meta_input], outputs=x)
 
 LAMBDA = 100
 loss_object = tf.keras.losses.BinaryCrossentropy(from_logits=True)
@@ -99,37 +100,39 @@ loss_object = tf.keras.losses.BinaryCrossentropy(from_logits=True)
 def generator_loss(disc_generated_output, gen_output, target):
     gan_loss = loss_object(tf.ones_like(disc_generated_output), disc_generated_output)
 
-    l1_loss = tf.reduce_mean(tf.abs(target - tf.cast(gen_output, tf.float64)))
+    l1_loss = tf.reduce_mean(tf.abs(target - gen_output))
 
-    total_gen_loss = tf.cast(gan_loss, tf.float64) + (LAMBDA * l1_loss)
+    total_gen_loss = gan_loss + (LAMBDA * l1_loss)
 
     return total_gen_loss, gan_loss, l1_loss
 
 def Discriminator():
-    init = tf.random_normal_initializer()
+    init = tf.random_normal_initializer(0., 0.02)
 
-    inp = tf.keras.layers.Input(shape=[64, 64, 3]) # Generated image
-    meta = tf.keras.layers.Input(shape=[64, 64, 3]) # Metadata
-    tar = tf.keras.layers.Input(shape=[64, 64, 3]) # Target image
+    inp = tf.keras.layers.Input(shape=[64, 64, 3], dtype=tf.float32) # Generated image
+    #meta = tf.keras.layers.Input(shape=[64, 64, 3], dtype=tf.float32) # Metadata
+    tar = tf.keras.layers.Input(shape=[64, 64, 3], dtype=tf.float32) # Target image
 
-    x = tf.keras.layers.concatenate([inp, meta, tar]) # (64, 64, 9)
+    x = tf.keras.layers.concatenate([inp, tar]) # (64, 64, 6)
+    #x = tf.keras.layers.concatenate([inp, meta, tar]) # (64, 64, 9)
 
     down1 = downsample(64, 4, False)(x) # (32, 32)
     down2 = downsample(128, 4)(down1) # (16, 16)
     down3 = downsample(256, 4)(down2) # (8, 8)
 
     zero_pad1 = tf.keras.layers.ZeroPadding2D()(down3) # (10, 10)
-    conv = tf.keras.layers.Conv2D(512, 4, 1, kernel_initializer=init, use_bias=False)(zero_pad1) # (?, ?)
+    conv = tf.keras.layers.Conv2D(512, 4, 1, kernel_initializer=init, use_bias=False)(zero_pad1) # (7, 7)
     
     batchnorm1 = tf.keras.layers.BatchNormalization()(conv)
 
     leaky_relu = tf.keras.layers.LeakyReLU()(batchnorm1)
 
-    zero_pad2 = tf.keras.layers.ZeroPadding2D()(leaky_relu)
+    zero_pad2 = tf.keras.layers.ZeroPadding2D()(leaky_relu) # (9, 9)
 
-    last = tf.keras.layers.Conv2D(1, 4, strides=1, kernel_initializer=init)(zero_pad2)
+    last = tf.keras.layers.Conv2D(1, 4, strides=1, kernel_initializer=init)(zero_pad2) # (6, 6)
 
-    return tf.keras.Model(inputs=[inp, meta, tar], outputs=last)
+    return tf.keras.Model(inputs=[inp, tar], outputs=last)
+    #return tf.keras.Model(inputs=[inp, meta, tar], outputs=last)
 
 def discriminator_loss(disc_real_output, disc_generated_output):
     real_loss = loss_object(tf.ones_like(disc_real_output), disc_real_output)
