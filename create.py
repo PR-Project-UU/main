@@ -1,7 +1,7 @@
 from image import preprocess, denormalize
 from logging import getLogger
 from math import ceil
-from model import Generator
+from model_v2 import get_generator
 from util import normalize_meta
 import numpy as np
 from os import path
@@ -9,7 +9,7 @@ import pickle
 import tensorflow as tf
 
 class Creator():
-    generator = Generator()
+    generator = get_generator()
     log = getLogger('creator')
     save_path: str = None
 

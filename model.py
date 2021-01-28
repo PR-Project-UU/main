@@ -129,9 +129,16 @@ def Discriminator():
 
     zero_pad2 = tf.keras.layers.ZeroPadding2D()(leaky_relu) # (9, 9)
 
-    last = tf.keras.layers.Conv2D(1, 4, strides=1, kernel_initializer=init)(zero_pad2) # (6, 6)
+    last = tf.keras.layers.Conv2D(1, 4, strides=1, kernel_initializer=init)(zero_pad2) # (6, 6)m 
 
-    return tf.keras.Model(inputs=[inp, tar], outputs=last)
+    # NOTE: The following (active) code is Stage 2 Code
+    sigm = tf.keras.layers.Activation('sigmoid')(last)
+
+    model = tf.keras.Model(inputs=[inp, tar], outputs=sigm)
+    opt = tf.keras.optimizers.Adam(0.0002, 0.5)
+    model.compile(loss='binary_crossentropy', optimizer=opt, loss_weights=[0.5])
+
+    return model
     #return tf.keras.Model(inputs=[inp, meta, tar], outputs=last)
 
 def discriminator_loss(disc_real_output, disc_generated_output):

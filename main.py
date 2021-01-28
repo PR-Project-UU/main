@@ -37,8 +37,6 @@ def create():
         image = creator.create(args.load_path[0], args.meta)
         filename = '.'.join(args.load_path[0].split('/')[-1].split('.')[:-1]) + '.png'
 
-        print(np.nanmin(image), np.nanmax(image))
-
         plt.imsave(path.join(args.save_path[0], filename), image, vmin=0, vmax=1)
 
     log.info('We did it')
@@ -65,13 +63,22 @@ def preprocess():
 
     getLogger('preprocess').info('Preprocessed %s files to "%s"', len(files), args.save_path[0] or args.load_path[0])
 
+# def train():
+#     '''Runs the training cycle'''
+#     # Import here to prevent slowdown in different modes
+#     from train import Dataset, Trainer
+
+#     ds = Dataset(args.load_path[0])
+#     trainer = Trainer(ds, args.model[0], args.save_path[0], args.epochs[0])
+#     trainer.fit()
+
 def train():
     '''Runs the training cycle'''
     # Import here to prevent slowdown in different modes
-    from train import Dataset, Trainer
-
-    ds = Dataset(args.load_path[0])
-    trainer = Trainer(ds, args.model[0], args.save_path[0], args.epochs[0])
+    from model_v2 import Trainer
+    batch_size = 5
+    batches_per_epoch = 100
+    trainer = Trainer(args.load_path[0], args.model[0], args.save_path[0], args.epochs[0], batch_size, batches_per_epoch)
     trainer.fit()
 
 mode_table = {

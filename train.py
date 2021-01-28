@@ -157,5 +157,8 @@ class Trainer():
         generator_gradients = gen_tape.gradient(gen_total_loss, self.generator.trainable_variables)
         discriminator_gradients = disc_tape.gradient(disc_loss, self.discriminator.trainable_variables)
 
+        tf.print('XX:XX:XX     INFO              trainer > Generator Loss:     ', gen_total_loss)
+        tf.print('XX:XX:XX     INFO              trainer > Discriminator Loss: ', disc_loss)
+
         self.generator_optimizer.apply_gradients(zip(generator_gradients, self.generator.trainable_variables))
         self.discriminator_optimizer.apply_gradients(zip(discriminator_gradients, self.discriminator.trainable_variables))

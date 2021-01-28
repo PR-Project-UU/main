@@ -10,3 +10,5 @@ fix.py
 generate.pickle
 raw_data.zip
 pickup.md
+models/
+.conda/
