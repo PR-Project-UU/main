@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-from model_v2 import get_generator
+from model import get_generator
 import numpy as np
 from os import listdir, path
 from pickle import load

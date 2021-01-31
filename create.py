@@ -1,7 +1,7 @@
 from image import preprocess, denormalize
 from logging import getLogger
 from math import ceil
-from model_v2 import get_generator
+from model import get_generator
 from util import normalize_meta
 import numpy as np
 from os import path
@@ -24,9 +24,8 @@ class Creator():
         self.generator.set_weights(weights)       
         self.save_path = save_path 
 
-    def create(self, source: str, meta: int, to_pickle: bool = False):
+    def create(self, source: str, to_pickle: bool = False):
         source_ext = source.split('.')[-1]
-        meta_reshaped = tf.repeat(tf.repeat(np.moveaxis(tf.expand_dims(tf.expand_dims(normalize_meta(meta), 1, 0), 1, 0), 0, -1), 64, axis=0), 64, axis=1)[None]
 
         if not path.exists(source) or not source_ext in ['pickle', 'tif']:
             self.log.error('Cannot find TIF image or pickle at "%s"', source)
@@ -53,9 +52,9 @@ class Creator():
 
         for tile in tiles:
             if to_pickle:
-                results.append(np.squeeze(self.generator([tile, meta_reshaped]).numpy()))
+                results.append(np.squeeze(self.generator([tile]).numpy()))
             else:
-                results.append(denormalize(np.squeeze(self.generator([tile, meta_reshaped]).numpy())))
+                results.append(denormalize(np.squeeze(self.generator([tile]).numpy())))
 
         if len(results) > 1:
             stitched = self.stitch(results, image.shape)

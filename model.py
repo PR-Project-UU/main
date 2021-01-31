@@ -1,151 +1,282 @@
+from base62 import encode
+from logging import getLogger
+import numpy as np
+from os import path
+import pandas as pd
+import pickle
+from queue import SimpleQueue
+from random import shuffle
 import tensorflow as tf
+from time import time, monotonic
+from datetime import timedelta
 
-def downsample(filters, size, apply_batchnorm = True, seed = None):
-    '''Creates a downsample layer group
+tf.get_logger().setLevel('WARNING')
 
-    Args:
-        filters (int): The number of filters in the Conv2D layer
-        size (int): The kernal size in the Conv2D layer
-        apply_batchnorm (bool, optional): Whether or not to add a batch normalization layer. Defaults to True.
-        seed (int, optional): The seed for the initializer. Defaults to None.
+def get_discriminator():
+    init = tf.keras.initializers.RandomNormal(0, 0.02)
 
-    Returns:
-        Sequential: A downsample model part
-    '''
-    init = tf.random_normal_initializer(0., 0.02, seed=seed)
-    model = tf.keras.Sequential()
-    
-    model.add(tf.keras.layers.Conv2D(filters, size, 2, 'same', kernel_initializer=init, use_bias=False))
+    input_image = tf.keras.layers.Input(shape=[64, 64, 3], dtype=tf.float32)
+    target_image = tf.keras.layers.Input(shape=[64, 64, 3], dtype=tf.float32)
+
+    merged = tf.keras.layers.Concatenate()([input_image, target_image]) # (64, 64, 6)
+
+    l = tf.keras.layers.GaussianNoise(0.1)(merged)
+
+    l = tf.keras.layers.Conv2D(64, (4, 4), (2, 2), 'same', kernel_initializer=init)(l) # (32, 32, 64)
+    l = tf.keras.layers.LeakyReLU(alpha=0.2)(l)
+
+    l = tf.keras.layers.Conv2D(128, (3, 3), padding='same', kernel_initializer=init)(l) # (32, 32, 128)
+    l = tf.keras.layers.BatchNormalization()(l)
+    l = tf.keras.layers.LeakyReLU(alpha=0.2)(l)
+
+    l = tf.keras.layers.Conv2D(256, (3, 3), padding='same', kernel_initializer=init)(l) # (32, 32, 256)
+    l = tf.keras.layers.BatchNormalization()(l)
+    l = tf.keras.layers.LeakyReLU(alpha=0.2)(l)
+
+    l = tf.keras.layers.Conv2D(512, (3, 3), padding='same', kernel_initializer=init)(l) # (32, 32, 512)
+    l = tf.keras.layers.BatchNormalization()(l)
+    l = tf.keras.layers.LeakyReLU(alpha=0.2)(l)
+
+    l = tf.keras.layers.Conv2D(512, (4, 4), padding='same', kernel_initializer=init)(l) # (31, 31, 512)
+    l = tf.keras.layers.BatchNormalization()(l)
+    l = tf.keras.layers.LeakyReLU(alpha=0.2)(l)
+
+    l = tf.keras.layers.Conv2D(1, (4, 4), padding='same', kernel_initializer=init)(l) # (30, 30, 1)
+    output = tf.keras.layers.Activation('sigmoid')(l)
+
+    model = tf.keras.Model([input_image, target_image], output)
+    opt = tf.keras.optimizers.SGD(0.0002)
+    loss = tf.keras.losses.BinaryCrossentropy(False, label_smoothing=0.1)
+    model.compile(loss=loss, optimizer=opt, loss_weights=[0.5], metrics=['accuracy'])
+
+    return model
+
+def downsample(layer_in, filters, size=(4, 4), strides=(2, 2), apply_batchnorm = True):
+    init = tf.random_normal_initializer(0., 0.02)
+    l = tf.keras.layers.Conv2D(filters, size, strides, 'same', kernel_initializer=init)(layer_in)
 
     if apply_batchnorm:
-        model.add(tf.keras.layers.BatchNormalization())
+        l = tf.keras.layers.BatchNormalization()(l, training=True)
 
-    model.add(tf.keras.layers.LeakyReLU())
+    l = tf.keras.layers.LeakyReLU(0.2)(l)
+    return l
 
-    return model
-
-def upsample(filters, size, apply_dropout = False, seed = None):
-    '''Creates a upsample layer group
-
-    Args:
-        filters (int): The number of filters in the Conv2DTranspose layer
-        size (int): The kernel size in the Conv2DTranspose layer
-        apply_dropout (bool, optional): Whether or not to add a Dropout layer. Defaults to False.
-        seed (int, optional): The seed for the initializer. Defaults to None.
-
-    Returns:
-        Sequential: A upscale model part
-    '''
-    init = tf.random_normal_initializer(0., 0.02, seed=seed)
-    model = tf.keras.Sequential()
-    
-    model.add(tf.keras.layers.Conv2DTranspose(filters, size, 2, 'same', kernel_initializer=init, use_bias=False))
-
-    model.add(tf.keras.layers.BatchNormalization())
+def upsample(layer_in, skip_in, filters, size=(4, 4), strides=(2, 2), apply_dropout = False):
+    init = tf.random_normal_initializer(0., 0.02)
+    l = tf.keras.layers.Conv2DTranspose(filters, size, strides, 'same', kernel_initializer=init)(layer_in)
+    l = tf.keras.layers.BatchNormalization()(l, training=True)
 
     if apply_dropout:
-        model.add(tf.keras.layers.Dropout(0.5))
+        l = tf.keras.layers.Dropout(0.5)(l, training=True)
 
-    model.add(tf.keras.layers.ReLU())
+    l = tf.keras.layers.Concatenate()([l, skip_in])
+    l = tf.keras.layers.Activation('relu')(l)
+    return l
 
+def get_generator():
+    init = tf.random_normal_initializer(0., 0.02)
+    input_image = tf.keras.layers.Input(shape=[64, 64, 3])
+
+    e1 = downsample(input_image, 64, (3, 3), (1, 1), False) # (64, 64, 64)
+    e2 = downsample(e1, 128, (3, 3), (1, 1)) # (64, 64, 128)
+    e3 = downsample(e2, 256) # (32, 32, 256)
+    e4 = downsample(e3, 512) # (16, 16, 512)
+    e5 = downsample(e4, 512) # (8, 8, 512)
+    e6 = downsample(e5, 512) # (4, 4, 512)
+    e7 = downsample(e6, 512) # (2, 2, 512)
+
+    b = tf.keras.layers.Conv2D(512, (4, 4), (2, 2), 'same', kernel_initializer=init)(e7) # (1, 1, 512)
+    b = tf.keras.layers.Activation('relu')(b)
+
+    d1 = upsample(b, e7, 512, apply_dropout=True) # (2, 2, 512)
+    d2 = upsample(d1, e6, 512, apply_dropout=True) # (4, 4, 512)
+    d3 = upsample(d2, e5, 512, apply_dropout=True) # (8, 8, 512)
+    d4 = upsample(d3, e4, 512) # (16, 16, 512)
+    d5 = upsample(d4, e3, 256) # (32, 32, 256)
+    d6 = upsample(d5, e2, 128) # (64, 64, 128)
+    d7 = upsample(d6, e1, 64, strides=(1, 1)) # (64, 64, 64)
+
+    output = tf.keras.layers.Conv2DTranspose(3, (4, 4), padding='same', kernel_initializer=init)(d7)
+    output_image = tf.keras.layers.Activation('tanh')(output)
+
+    model = tf.keras.Model(input_image, output_image)
     return model
 
-def Generator():
-    inputs = tf.keras.layers.Input(shape=[64, 64, 3], dtype=tf.float32)
-    #meta_input = tf.keras.layers.Input(shape=[64, 64, 3], dtype=tf.float32)
+def get_gan(g_model, d_model):
+    d_model.trainable = False
+    # for layer in d_model.layers:
+    #     if not isinstance(layer, tf.keras.layers.BatchNormalization):
+    #         layer.trainable = False
 
-    down_stack = [
-        downsample(64, 4, apply_batchnorm=False), # (32, 32)
-        downsample(128, 4), # (16, 16)
-        downsample(256, 4), # (8, 8)
-        downsample(512, 4), # (4, 4)
-        downsample(512, 4), # (2, 2)
-        downsample(512, 4) # (1, 1)
-    ]
+    input_image = tf.keras.layers.Input([64, 64, 3])
+    gen_out = g_model(input_image)
+    dis_out = d_model([input_image, gen_out])
 
-    up_stack = [
-        upsample(512, 4, apply_dropout=True), # (2, 2)
-        upsample(512, 4, apply_dropout=True), # (4, 4)
-        upsample(512, 4, apply_dropout=True), # (8, 8)
-        upsample(256, 4), # (16, 16)
-        upsample(128, 4) # (32, 32)
-    ]
-
-    init = tf.random_normal_initializer(0., 0.02)
-    last = tf.keras.layers.Conv2DTranspose(3, 4, 2, 'same', kernel_initializer=init, activation='tanh')
-
-    #x = tf.keras.layers.Concatenate()([inputs, meta_input]) # Merge inputs with meta features
-    x = inputs
-
-    skips = []
-
-    for down in down_stack:
-        x = down(x)
-        skips.append(x)
-
-    skips = reversed(skips[:-1])
-
-    for up, skip in zip(up_stack, skips):
-        x = up(x)
-        x = tf.keras.layers.Concatenate()([x, skip])
-
-    x = last(x)
-
-    return tf.keras.Model(inputs=inputs, outputs=x)
-    #return tf.keras.Model(inputs=[inputs, meta_input], outputs=x)
-
-LAMBDA = 100
-loss_object = tf.keras.losses.BinaryCrossentropy(from_logits=True)
-
-def generator_loss(disc_generated_output, gen_output, target):
-    gan_loss = loss_object(tf.ones_like(disc_generated_output), disc_generated_output)
-
-    l1_loss = tf.reduce_mean(tf.abs(target - gen_output))
-
-    total_gen_loss = gan_loss + (LAMBDA * l1_loss)
-
-    return total_gen_loss, gan_loss, l1_loss
-
-def Discriminator():
-    init = tf.random_normal_initializer(0., 0.02)
-
-    inp = tf.keras.layers.Input(shape=[64, 64, 3], dtype=tf.float32) # Generated image
-    #meta = tf.keras.layers.Input(shape=[64, 64, 3], dtype=tf.float32) # Metadata
-    tar = tf.keras.layers.Input(shape=[64, 64, 3], dtype=tf.float32) # Target image
-
-    x = tf.keras.layers.concatenate([inp, tar]) # (64, 64, 6)
-    #x = tf.keras.layers.concatenate([inp, meta, tar]) # (64, 64, 9)
-
-    down1 = downsample(64, 4, False)(x) # (32, 32)
-    down2 = downsample(128, 4)(down1) # (16, 16)
-    down3 = downsample(256, 4)(down2) # (8, 8)
-
-    zero_pad1 = tf.keras.layers.ZeroPadding2D()(down3) # (10, 10)
-    conv = tf.keras.layers.Conv2D(512, 4, 1, kernel_initializer=init, use_bias=False)(zero_pad1) # (7, 7)
-    
-    batchnorm1 = tf.keras.layers.BatchNormalization()(conv)
-
-    leaky_relu = tf.keras.layers.LeakyReLU()(batchnorm1)
-
-    zero_pad2 = tf.keras.layers.ZeroPadding2D()(leaky_relu) # (9, 9)
-
-    last = tf.keras.layers.Conv2D(1, 4, strides=1, kernel_initializer=init)(zero_pad2) # (6, 6)m 
-
-    # NOTE: The following (active) code is Stage 2 Code
-    sigm = tf.keras.layers.Activation('sigmoid')(last)
-
-    model = tf.keras.Model(inputs=[inp, tar], outputs=sigm)
+    model = tf.keras.Model(input_image, [dis_out, gen_out])
     opt = tf.keras.optimizers.Adam(0.0002, 0.5)
-    model.compile(loss='binary_crossentropy', optimizer=opt, loss_weights=[0.5])
+    model.compile(loss=['binary_crossentropy', 'mae'], optimizer=opt, loss_weights=[1, 100])
 
     return model
-    #return tf.keras.Model(inputs=[inp, meta, tar], outputs=last)
 
-def discriminator_loss(disc_real_output, disc_generated_output):
-    real_loss = loss_object(tf.ones_like(disc_real_output), disc_real_output)
-    generated_loss = loss_object(tf.zeros_like(disc_generated_output), disc_generated_output)
+class Dataset():
+    buffer = SimpleQueue()
+    buffer_size = 100
+    dataframe = pd.read_csv('./meta_features.csv')
+    datapoints = []
+    load_path: str = None
+    log = getLogger('dataset')
+    size = 0
 
-    total_disc_loss = real_loss + generated_loss
+    def __init__(self, load_path: str, buffer_size: int = 100):
+        self.buffer_size = buffer_size
+        self.load_path = load_path
 
-    return total_disc_loss
+        for city in self.dataframe['METROREG'].unique():
+            subset = self.dataframe.loc[self.dataframe['METROREG'] == city]
+            coordinates = '%.2f_%.2f' % (subset['latitude'].iloc[0], subset['longitude'].iloc[0])
+            interval = [min(subset['TIME']), max(subset['TIME']) + 1]
 
+            for year in range(interval[0], interval[1]):
+                # If next year doesn't exist, stop adding this city
+                if not path.exists(path.join(load_path, '%s-0-%d.pickle' % (coordinates, year + 1))):
+                    break
+
+                for i in range(25):
+                    inp, tar = ('%s-%d-%d.pickle' % (coordinates, i, year), '%s-%d-%d.pickle' % (coordinates, i, year + 1))
+
+                    if path.exists(path.join(load_path, inp)) and path.exists(path.join(load_path, tar)):
+                        self.datapoints.append((inp, tar))
+                    else:
+                        self.log.warning('Missing pair for city %s, index %d, year %d/%d', city, i, year, year + 1)
+
+        self.size = len(self.datapoints)
+        self.log.info('Created dataset object with size %d', len(self.datapoints))
+
+    def generate(self):
+        nan_threshold = 122.88 # Threshold for ignoring images (1% of image content)
+
+        while self.buffer.qsize() < self.buffer_size:
+            shuffle(self.datapoints)
+
+            for (inp, tar) in self.datapoints:
+                if self.buffer.qsize() >= self.buffer_size:
+                    break
+
+                with open(path.join(self.load_path, inp), 'rb') as inp_file:
+                    inp_image = pickle.load(inp_file)[None]
+                
+                with open(path.join(self.load_path, tar), 'rb') as tar_file:
+                    tar_image = pickle.load(tar_file)[None]
+
+                if np.isnan(inp_image).sum() < nan_threshold:
+                    inp_image = np.nan_to_num(inp_image, False)
+                    self.log.debug('Replaced NaNs in input image "%s"', inp)
+                else:
+                    self.log.debug('Input image contains NaN: "%s"', inp)
+                    self.datapoints.remove((inp, tar))
+                    continue
+
+                if np.isnan(tar_image).sum() < nan_threshold:
+                    tar_image = np.nan_to_num(tar_image, False)
+                    self.log.debug('Replaced NaNs in target image "%s"', tar)
+                else:
+                    self.log.debug('Target image contains NaN: "%s"', tar)
+                    self.datapoints.remove((inp, tar))
+                    continue
+
+                self.buffer.put((inp_image, tar_image))
+
+        self.log.info('Repopulated dataset to size of %d', self.buffer_size)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.buffer.empty():
+            self.generate()
+        
+        return self.buffer.get()
+
+class Trainer:
+    batch_size = 100
+    batches_per_epoch = 10
+    dataset = None
+    discriminator = None
+    load_path = None
+    epochs = 150
+    generator = None
+    log = getLogger('trainer')
+    save_path = None
+
+    def __init__(self, load_path: str, model: str = None, save_path: str = None, epochs: int = 150, batch_size = None, batches_per_epoch = 10):
+        self.batch_size = batch_size
+        self.batches_per_epoch = batches_per_epoch
+        self.dataset = Dataset(load_path, min((batch_size or 100) * batches_per_epoch, 1000))
+        self.discriminator = get_discriminator()
+        self.epochs = epochs
+        self.generator = get_generator()
+        self.load_path = load_path
+        self.save_path = save_path
+
+        if not model is None:
+            with open(model, 'rb') as f:
+                gen_weights, disc_weights = pickle.load(f)
+
+            self.generator.set_weights(gen_weights)
+            self.discriminator.set_weights(disc_weights)
+
+            self.log.info('Loaded model from "%s"', model)
+
+    def fit(self):
+        start_time = monotonic()
+        gan_model = get_gan(self.generator, self.discriminator)
+        d_acc2 = 0.0
+
+        for epoch in range(self.epochs):
+            for batch in range(self.batches_per_epoch):
+                x_inp, x_tar, x_gen, y_real, y_fake = self.generate_samples()
+
+                # Train the generator
+                if d_acc2 < 0.5:
+                    d_loss1, d_acc1 = self.discriminator.train_on_batch([x_inp, x_tar], y_real)
+                    d_loss2, d_acc2 = self.discriminator.train_on_batch([x_inp, x_gen], y_fake)
+                else:
+                   _, d_acc2 = self.discriminator.test_on_batch([x_inp, x_gen], y_fake)
+
+                # Train the generator (via the GAN model)
+                g_loss, _, _ = gan_model.train_on_batch(x_inp, [y_real, x_tar])
+
+                self.log.info('Loss for E%3d / %3d, B%3d / %3d: d1=%.2f, d2=%.2f, da=%.2f, g=%.2f', (epoch + 1), self.epochs, (batch + 1), self.batches_per_epoch, d_loss1 or 0.0, d_loss2 or 0.0, d_acc2, g_loss)
+
+            if (epoch + 1) % 10 == 0 and not self.save_path is None:
+                self.save()
+
+        self.save()
+        self.log.info('Finished training (%d epochs) in: %s', self.epochs, timedelta(seconds = monotonic() - start_time))
+
+    def generate_samples(self):
+        inp_batch = np.empty((0, 64, 64, 3), dtype='float32')
+        tar_batch = np.empty((0, 64, 64, 3), dtype='float32')
+        gen_batch = np.empty((0, 64, 64, 3), dtype='float32')
+        
+        for _ in range(self.batch_size or self.dataset.size):
+            inp, tar = next(self.dataset)
+            gen = self.generator(inp)
+
+            inp_batch = np.concatenate([inp_batch, inp], 0)
+            tar_batch = np.concatenate([tar_batch, tar], 0)
+            gen_batch = np.concatenate([gen_batch, gen], 0)
+
+        patch_shape = self.discriminator.output_shape[1]
+        label_shape = (self.batch_size, patch_shape, patch_shape, 1)
+
+        return inp_batch, tar_batch, gen_batch, np.ones(label_shape, 'float32'), np.zeros(label_shape, 'float32')
+
+    def save(self):
+        '''Saves the trained models' weights to file'''
+        name = encode(int(time()))[2:] + '.pickle'
+
+        with open(path.join(self.save_path, name), 'wb') as f:
+            pickle.dump((self.generator.get_weights(), self.discriminator.get_weights()), f)
+        
+        self.log.info('Saved model to "%s"', name)

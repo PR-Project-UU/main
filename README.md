@@ -7,15 +7,15 @@ They are described in this section.
 Argument         | Description                                                        | Shorthand | Type    | Default         | Notes
 :---             | :---                                                               | :---:     | :---:   | :---            | :---
 `--delete`       | Delete files from after downloading or preprocessing them.         | `-e`      | N/A     | False           | 1
+`--epochs`       | The amount of epochs to train for.                                 | `-c`      | Integer | `150`           | N/A
+`--batches`      | Sets the number of batches to train on per epoch.                  | `-b`      | Integer | `100`           | N/A
 `--load-path`    | The path to load images from                                       | `-p`      | String  | `"./data/raw"`  | 4
 `--log`          | Enables debug, or sets the output level.                           | `-l`      | String  | `"info"`        | 2
 `--mode`         | Sets the mode the program is run in.                               | `-m`      | String  | `"generate"`    | 3
-`--model`        | Sets the model to use for predicting or further training.          | `-o`      | String  | `"cgan.pickle"` | N/A
+`--model`        | Sets the model to use for predicting or further training.          | `-o`      | String  | N/A             | 5
 `--no-overwrite` | Prevents overwriting files during preprocessing.                   | `-n`      | N/A     | False           | N/A
 `--save-path`    | Where to save files after they've been downloaded or preprocessed. | `-s`      | String  | `"./data/raw"`  | N/A
-
-<!-- `--no-download` | Disables downloading after generating files.                       | N/A       | N/A     | False          | N/A -->
-<!-- `--timeout`     | The timeout to wait for downloads to be ready in seconds.          | `-t`      | Integer | None           | 5 -->
+`--save-pickle`  | Saves predicted images to pickles rather than PNG images.          | None      | N/A     | False           | N/A
 
 ### Argument Notes
 #### 1. Delete
@@ -47,9 +47,18 @@ The load path flag informs the program where to load image files from.
 Its behavior is dependent on the mode set (with the `--mode` flag).  
 In preprocessing mode (`--mode preprocess`) it selects the path to load raw `.tif` images from and preprocesses them to numpy data-cubes.  
 In training mode (`--mode train`) this is the path where the program will look for preprocessed images to use in training and testing.  
-In predict mode (`--mode predict`) this is the path where it will try to find the images to run predictions on. The model to run in set by the `--model` flag.
+In predict mode (`--mode predict`) this is the path where it will try to find the image to run a prediction on. The model to run in set by the `--model` flag.
 
-<!-- #### 5. Timeout
-The timeout flag sets the time to wait for downloads after executing a generate order to the Google Earth Engine servers.
-The default value of "None" sets the timeout to three times the number of files generated in minutes.
-The value to provide is time in seconds. -->
+#### 5. Model
+The model flag selects which model to load.
+What to do with the loaded model depends on the selected mode (`--mode`).  
+In training mode (`--mode train`) the loaded model is trained further, rather than training a new model from scratch.  
+In predict mode (`--mode predict`) the loaded model is used to predict images from input(s).  
+In the other modes (generate and preprocessing) this flag does nothing.
+
+### Batch Prediction
+If the predict mode is used (`--mode predict`), but no load path is provided (`--load-path`),
+the program will try to read the files to predict on from the input stream (stdin).  
+This means that either on the command-line or through a text file, this mode is able to work through a list of files.
+The first line of the input stream should contain just the number _n_ of files that you wish to process.
+Then on the following _n_ lines, you can enter one file to predict off per line.

@@ -30,7 +30,7 @@ def create():
             paths.append(stdin.readline()[:-1])
         
         for path in paths:
-            image = creator.create(path, args.meta, args.save_pickle)
+            image = creator.create(path, args.save_pickle)
 
             if args.save_pickle:
                 filename = '.'.join(path.split('/')[-1].split('.')[:-1]) + '.pickle'
@@ -42,7 +42,7 @@ def create():
 
                 plt.imsave(path.join(args.save_path[0], filename), image, vmin=0, vmax=1)
     else:
-        image = creator.create(args.load_path[0], args.meta, args.save_pickle)
+        image = creator.create(args.load_path[0], args.save_pickle)
 
         if args.save_pickle:
             filename = '.'.join(args.load_path[0].split('/')[-1].split('.')[:-1]) + '.pickle'
@@ -78,22 +78,12 @@ def preprocess():
 
     getLogger('preprocess').info('Preprocessed %s files to "%s"', len(files), args.save_path[0] or args.load_path[0])
 
-# def train():
-#     '''Runs the training cycle'''
-#     # Import here to prevent slowdown in different modes
-#     from train import Dataset, Trainer
-
-#     ds = Dataset(args.load_path[0])
-#     trainer = Trainer(ds, args.model[0], args.save_path[0], args.epochs[0])
-#     trainer.fit()
-
 def train():
     '''Runs the training cycle'''
     # Import here to prevent slowdown in different modes
-    from model_v2 import Trainer
-    batch_size = 5
-    batches_per_epoch = 100
-    trainer = Trainer(args.load_path[0], args.model[0], args.save_path[0], args.epochs[0], batch_size, batches_per_epoch)
+    from model import Trainer
+
+    trainer = Trainer(args.load_path[0], args.model[0], args.save_path[0], args.epochs[0], args.batch_size[0], args.batches[0])
     trainer.fit()
 
 mode_table = {
