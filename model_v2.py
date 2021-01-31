@@ -20,7 +20,7 @@ def get_discriminator():
 
     merged = tf.keras.layers.Concatenate()([input_image, target_image]) # (64, 64, 6)
 
-    l = tf.keras.layers.GaussianNoise(0.2)(merged)
+    l = tf.keras.layers.GaussianNoise(0.1)(merged)
 
     l = tf.keras.layers.Conv2D(64, (4, 4), (2, 2), 'same', kernel_initializer=init)(l) # (32, 32, 64)
     l = tf.keras.layers.LeakyReLU(alpha=0.2)(l)
@@ -42,11 +42,11 @@ def get_discriminator():
     l = tf.keras.layers.LeakyReLU(alpha=0.2)(l)
 
     l = tf.keras.layers.Conv2D(1, (4, 4), padding='same', kernel_initializer=init)(l) # (30, 30, 1)
-    output = tf.keras.layers.Activation('linear')(l)
+    output = tf.keras.layers.Activation('sigmoid')(l)
 
     model = tf.keras.Model([input_image, target_image], output)
     opt = tf.keras.optimizers.SGD(0.0002)
-    loss = tf.keras.losses.BinaryCrossentropy(True, label_smoothing=0.1)
+    loss = tf.keras.losses.BinaryCrossentropy(False, label_smoothing=0.1)
     model.compile(loss=loss, optimizer=opt, loss_weights=[0.5], metrics=['accuracy'])
 
     return model
@@ -227,7 +227,7 @@ class Trainer:
 
     def fit(self):
         start_time = monotonic()
-        history = ([], [], [], [], []) # dl1, dl2, gl, da1, da2
+        # history = ([], [], [], [], []) # dl1, dl2, gl, da1, da2
         gan_model = get_gan(self.generator, self.discriminator)
         d_acc2 = 0.0
 
@@ -245,11 +245,11 @@ class Trainer:
                 # Train the generator (via the GAN model)
                 g_loss, _, _ = gan_model.train_on_batch(x_inp, [y_real, x_tar])
 
-                history[0].append(d_loss1)
-                history[1].append(d_loss2)
-                history[2].append(g_loss / 10)
-                history[3].append(d_acc1)
-                history[4].append(d_acc2)
+                # history[0].append(d_loss1)
+                # history[1].append(d_loss2)
+                # history[2].append(g_loss / 10)
+                # history[3].append(d_acc1)
+                # history[4].append(d_acc2)
 
                 self.log.info('Loss for E%3d / %3d, B%3d / %3d: d1=%.2f, d2=%.2f, da=%.2f, g=%.2f', (epoch + 1), self.epochs, (batch + 1), self.batches_per_epoch, d_loss1 or 0.0, d_loss2 or 0.0, d_acc2, g_loss)
 
@@ -259,17 +259,17 @@ class Trainer:
         self.save()
         self.log.info('Finished training (%d epochs) in: %s', self.epochs, timedelta(seconds = monotonic() - start_time))
 
-        from matplotlib import pyplot as plt
-        _, ax = plt.subplots(2)
-        ax[0].plot(history[0], label='disc. loss real')
-        ax[0].plot(history[1], label='disc. loss fake')
-        ax[0].plot(history[2], label='gen. loss')
-        ax[0].legend()
-        ax[1].plot(history[3], label='disc. acc real')
-        ax[1].plot(history[4], label='disc. acc fake')
-        ax[1].legend()
+        # from matplotlib import pyplot as plt
+        # _, ax = plt.subplots(2)
+        # ax[0].plot(history[0], label='disc. loss real')
+        # ax[0].plot(history[1], label='disc. loss fake')
+        # ax[0].plot(history[2], label='gen. loss')
+        # ax[0].legend()
+        # ax[1].plot(history[3], label='disc. acc real')
+        # ax[1].plot(history[4], label='disc. acc fake')
+        # ax[1].legend()
 
-        plt.show()
+        # plt.show()
 
     def generate_samples(self):
         inp_batch = np.empty((0, 64, 64, 3), dtype='float32')

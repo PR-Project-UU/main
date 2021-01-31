@@ -24,7 +24,7 @@ class Creator():
         self.generator.set_weights(weights)       
         self.save_path = save_path 
 
-    def create(self, source: str, meta: int):
+    def create(self, source: str, meta: int, to_pickle: bool = False):
         source_ext = source.split('.')[-1]
         meta_reshaped = tf.repeat(tf.repeat(np.moveaxis(tf.expand_dims(tf.expand_dims(normalize_meta(meta), 1, 0), 1, 0), 0, -1), 64, axis=0), 64, axis=1)[None]
 
@@ -34,7 +34,7 @@ class Creator():
 
         if source_ext == 'tif':
             image = preprocess(source, crop_image = False, return_value = True)
-            print(np.isnan(image).sum())
+            image = np.nan_to_num(image)
         else:
             with open(source, 'rb') as f:
                 image = pickle.load(f)
@@ -52,7 +52,10 @@ class Creator():
         results = []
 
         for tile in tiles:
-            results.append(denormalize(np.squeeze(self.generator([tile, meta_reshaped]).numpy())))
+            if to_pickle:
+                results.append(np.squeeze(self.generator([tile, meta_reshaped]).numpy()))
+            else:
+                results.append(denormalize(np.squeeze(self.generator([tile, meta_reshaped]).numpy())))
 
         if len(results) > 1:
             stitched = self.stitch(results, image.shape)

@@ -12,6 +12,7 @@ def create():
     from os import path
     from matplotlib import pyplot as plt
     import numpy as np
+    import pickle
 
     creator = Creator(args.model[0], args.save_path[0])
     log = getLogger('creator')
@@ -29,15 +30,29 @@ def create():
             paths.append(stdin.readline()[:-1])
         
         for path in paths:
-            image = creator.create(path, args.meta)
-            filename = '.'.join(path.split('/')[-1].split('.')[:-1]) + '.png'
+            image = creator.create(path, args.meta, args.save_pickle)
+
+            if args.save_pickle:
+                filename = '.'.join(path.split('/')[-1].split('.')[:-1]) + '.pickle'
+                
+                with open(path.join(args.save_path[0], filename), 'wb') as f:
+                    pickle.dump(image, f)
+            else:
+                filename = '.'.join(path.split('/')[-1].split('.')[:-1]) + '.png'
+
+                plt.imsave(path.join(args.save_path[0], filename), image, vmin=0, vmax=1)
+    else:
+        image = creator.create(args.load_path[0], args.meta, args.save_pickle)
+
+        if args.save_pickle:
+            filename = '.'.join(args.load_path[0].split('/')[-1].split('.')[:-1]) + '.pickle'
+
+            with open(path.join(args.save_path[0], filename), 'wb') as f:
+                pickle.dump(image, f)
+        else:
+            filename = '.'.join(args.load_path[0].split('/')[-1].split('.')[:-1]) + '.png'
 
             plt.imsave(path.join(args.save_path[0], filename), image, vmin=0, vmax=1)
-    else:
-        image = creator.create(args.load_path[0], args.meta)
-        filename = '.'.join(args.load_path[0].split('/')[-1].split('.')[:-1]) + '.png'
-
-        plt.imsave(path.join(args.save_path[0], filename), image, vmin=0, vmax=1)
 
     log.info('We did it')
 

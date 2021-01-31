@@ -14,6 +14,7 @@ parser.add_argument('-o', '--model', nargs=1, default=[None], type=str, help='Th
 #parser.add_argument('--no-download', action='store_true', default=False, help='Don\'t download after generating')
 parser.add_argument('-s', '--save-path', nargs=1, default=['./'], type=str, help='The path to save downloaded files to')
 #parser.add_argument('-t', '--timeout', nargs=1, default=[None], type=int, help='The time to wait for downloads to be ready in seconds')
+parser.add_argument('--save-pickle', action='store_true', default=False)
 
 args = parser.parse_args()
 
